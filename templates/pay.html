@@ -14,7 +14,7 @@
   <main class="container">
     <p class="intro">{{ tier_label }} - ₪{{ amount }}</p>
     <p id="pay-error" class="error hidden"></p>
-    <iframe id="nedarim-frame" class="nedarim-frame" src="https://matara.pro/nedarimplus/iframe/?language=he"></iframe>
+    <iframe id="nedarim-frame" class="nedarim-frame" scrolling="yes" src="https://matara.pro/nedarimplus/iframe/?language=he"></iframe>
   </main>
 
   <script>
@@ -36,7 +36,9 @@
     });
 
     window.addEventListener('message', function (event) {
-      if (event.origin !== 'https://matara.pro') return;
+      // Accept both matara.pro and www.matara.pro - different Nedarim Plus
+      // integration snippets use each inconsistently.
+      if (event.origin !== 'https://matara.pro' && event.origin !== 'https://www.matara.pro') return;
 
       let data = event.data;
       try {

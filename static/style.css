@@ -52,8 +52,9 @@ body {
 
 .nedarim-frame {
   width: 100%;
-  min-height: 600px;
+  min-height: 900px;
   border: 0;
+  overflow: auto;
 }
 
 .tiers {
