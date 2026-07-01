@@ -37,6 +37,13 @@ body {
   text-align: center;
 }
 
+.class-name {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--primary-dark);
+  margin-bottom: 4px;
+}
+
 .intro {
   color: #555;
   margin-bottom: 24px;
@@ -120,7 +127,9 @@ body {
 }
 
 input[type="tel"],
-input[type="text"] {
+input[type="text"],
+input[type="email"],
+select {
   padding: 12px;
   font-size: 1rem;
   border: 1px solid #ccc;

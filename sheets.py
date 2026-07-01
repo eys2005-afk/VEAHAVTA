@@ -8,7 +8,18 @@ from gspread.utils import rowcol_to_a1
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
-HEADERS = ["Phone", "Name", "Tier", "Status", "Amount", "TransactionId", "CreatedAt", "UpdatedAt"]
+HEADERS = [
+    "Phone",
+    "Name",
+    "Email",
+    "MaritalStatus",
+    "Tier",
+    "Status",
+    "Amount",
+    "TransactionId",
+    "CreatedAt",
+    "UpdatedAt",
+]
 
 _client = None
 
