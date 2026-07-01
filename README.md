@@ -77,7 +77,13 @@ marital status (רווק/ה - נשוי/אה).
 
 ## Google Sheet expected columns
 
-`Phone | Name | Email | MaritalStatus | Tier | Status | Amount | TransactionId | CreatedAt | UpdatedAt`
+Row 1 of the sheet must contain these Hebrew headers, in this exact order
+(columns A-J) - `sheets.py`'s `HEADER_LABELS` maps them back to the internal
+English field names the code uses:
+
+`טלפון | שם | אימייל | מצב משפחתי | מסלול | סטטוס | סכום | מזהה עסקה | נוצר בתאריך | עודכן בתאריך`
+
+(internally: `Phone | Name | Email | MaritalStatus | Tier | Status | Amount | TransactionId | CreatedAt | UpdatedAt`)
 
 `upsert_registrant` merges fields into the existing row (matched by phone)
 rather than overwriting it, so the payment webhook can't blank out details

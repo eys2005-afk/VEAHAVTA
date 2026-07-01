@@ -21,6 +21,23 @@ HEADERS = [
     "UpdatedAt",
 ]
 
+# Internal (English) key -> the actual column header text in the Sheet.
+# Keeps the code's field names stable while showing readable Hebrew column
+# titles to the client in the spreadsheet itself.
+HEADER_LABELS = {
+    "Phone": "טלפון",
+    "Name": "שם",
+    "Email": "אימייל",
+    "MaritalStatus": "מצב משפחתי",
+    "Tier": "מסלול",
+    "Status": "סטטוס",
+    "Amount": "סכום",
+    "TransactionId": "מזהה עסקה",
+    "CreatedAt": "נוצר בתאריך",
+    "UpdatedAt": "עודכן בתאריך",
+}
+_LABEL_TO_KEY = {v: k for k, v in HEADER_LABELS.items()}
+
 _client = None
 
 
@@ -52,7 +69,10 @@ def find_registrant(phone):
     """Return the registrant row (dict, with a `_row` sheet row number) or None."""
     ws = _get_worksheet()
     records = ws.get_all_records()
-    for i, row in enumerate(records, start=2):  # row 1 is the header
+    for i, raw_row in enumerate(records, start=2):  # row 1 is the header
+        # Sheet headers are Hebrew (HEADER_LABELS); translate back to the
+        # internal English keys the rest of the code uses.
+        row = {_LABEL_TO_KEY.get(k, k): v for k, v in raw_row.items()}
         if str(row.get("Phone", "")).strip() == str(phone).strip():
             row["_row"] = i
             return row
