@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ואהבת</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="header">
+    <img src="{{ url_for('static', filename='logo.svg') }}" alt="ואהבת" class="logo">
+    <h1>ואהבת</h1>
+  </header>
+
+  <main class="container">
+    <p class="intro">בחרו את המסלול המתאים לכם והשלימו רישום קצר</p>
+
+    <div class="tiers">
+      {% for key, tier in tiers.items() %}
+      <button
+        class="tier-button{% if not tier.enabled %} disabled{% endif %}"
+        data-tier="{{ key }}"
+        {% if not tier.enabled %}disabled{% endif %}
+      >
+        <span class="tier-label">{{ tier.label }}</span>
+        <span class="tier-amount">₪{{ tier.amount }}</span>
+      </button>
+      {% endfor %}
+    </div>
+  </main>
+
+  <div id="phone-modal" class="modal hidden">
+    <div class="modal-content">
+      <button type="button" class="modal-close" id="modal-close">&times;</button>
+      <h2>הזינו מספר טלפון</h2>
+      <form id="phone-form">
+        <input type="tel" id="phone-input" name="phone" placeholder="050-0000000" required>
+        <input type="hidden" id="selected-tier" name="tier">
+        <button type="submit">המשך</button>
+      </form>
+      <p id="phone-error" class="error hidden"></p>
+    </div>
+  </div>
+
+  <script>
+    const modal = document.getElementById('phone-modal');
+    const selectedTierInput = document.getElementById('selected-tier');
+    const phoneForm = document.getElementById('phone-form');
+    const phoneError = document.getElementById('phone-error');
+
+    document.querySelectorAll('.tier-button').forEach((button) => {
+      button.addEventListener('click', () => {
+        if (button.disabled) return;
+        selectedTierInput.value = button.dataset.tier;
+        modal.classList.remove('hidden');
+      });
+    });
+
+    document.getElementById('modal-close').addEventListener('click', () => {
+      modal.classList.add('hidden');
+    });
+
+    phoneForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      phoneError.classList.add('hidden');
+
+      const phone = document.getElementById('phone-input').value.trim();
+      const tier = selectedTierInput.value;
+
+      try {
+        const response = await fetch('/check-phone', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({ phone, tier }),
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          phoneError.textContent = data.error || 'שגיאה, נסו שוב';
+          phoneError.classList.remove('hidden');
+          return;
+        }
+
+        window.location.href = data.redirect;
+      } catch (err) {
+        phoneError.textContent = 'שגיאת תקשורת, נסו שוב';
+        phoneError.classList.remove('hidden');
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,157 @@
+:root {
+  --primary: #2f5d50;
+  --primary-dark: #1e3f36;
+  --bg: #faf7f2;
+  --text: #262322;
+  --error: #b3261e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px 16px;
+}
+
+.logo {
+  width: 48px;
+  height: 48px;
+}
+
+.container {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 24px 48px;
+  text-align: center;
+}
+
+.intro {
+  color: #555;
+  margin-bottom: 24px;
+}
+
+.tiers {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tier-button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 20px;
+  font-size: 1.1rem;
+  border: 2px solid var(--primary);
+  border-radius: 12px;
+  background: white;
+  color: var(--primary-dark);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.tier-button:hover:not(.disabled) {
+  background: #eef4f1;
+}
+
+.tier-button.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-color: #999;
+  color: #666;
+}
+
+.tier-amount {
+  font-weight: bold;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal.hidden {
+  display: none;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  padding: 32px 24px;
+  width: 90%;
+  max-width: 360px;
+  position: relative;
+  text-align: center;
+}
+
+.modal-close {
+  position: absolute;
+  top: 8px;
+  left: 12px;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #888;
+}
+
+#phone-form,
+.details-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+input[type="tel"],
+input[type="text"] {
+  padding: 12px;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  text-align: right;
+}
+
+label {
+  text-align: right;
+  font-weight: 600;
+}
+
+button[type="submit"] {
+  padding: 12px;
+  font-size: 1rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--primary);
+  color: white;
+  cursor: pointer;
+}
+
+button[type="submit"]:hover {
+  background: var(--primary-dark);
+}
+
+.error {
+  color: var(--error);
+  margin-top: 8px;
+}
+
+.hidden {
+  display: none;
+}

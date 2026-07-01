@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>פרטי רישום - ואהבת</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="header">
+    <img src="{{ url_for('static', filename='logo.svg') }}" alt="ואהבת" class="logo">
+    <h1>ואהבת</h1>
+  </header>
+
+  <main class="container">
+    <h2>השלמת פרטים</h2>
+    <p class="intro">מסלול נבחר: {{ tiers.get(tier, {}).get('label', tier) }}</p>
+
+    {% if error %}
+    <p class="error">{{ error }}</p>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('details') }}" class="details-form">
+      <label for="name">שם מלא</label>
+      <input type="text" id="name" name="name" required>
+
+      <input type="hidden" name="phone" value="{{ phone }}">
+      <input type="hidden" name="tier" value="{{ tier }}">
+
+      <button type="submit">המשך לתשלום</button>
+    </form>
+  </main>
+</body>
+</html>
