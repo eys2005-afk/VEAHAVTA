@@ -131,10 +131,12 @@ def webhook_nedarim():
     if not phone:
         return jsonify({"error": "missing phone (param1)"}), 400
 
+    # "OK" confirmed from a real working Nedarim Plus integration; "1" kept
+    # as a fallback guess in case this account's callback shape differs.
     upsert_registrant(
         phone,
         Tier=tier or "",
-        Status="paid" if str(status) == "1" else "failed",
+        Status="paid" if status in ("OK", "1") else "failed",
         TransactionId=transaction_id or "",
     )
 
