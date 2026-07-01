@@ -50,12 +50,6 @@ body {
   margin-bottom: 24px;
 }
 
-.nedarim-frame {
-  width: 100%;
-  min-height: 900px;
-  border: 0;
-  overflow: auto;
-}
 
 .tiers {
   display: flex;

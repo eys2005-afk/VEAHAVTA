@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from flask import Flask, jsonify, redirect, render_template, request, url_for
 from flask_cors import CORS
 
-from nedarim import TIERS, build_payment_params
+from nedarim import TIERS, build_payment_url
 from sheets import find_registrant, upsert_registrant
 
 load_dotenv()
@@ -98,12 +98,7 @@ def pay():
     if not phone or not tier or tier not in TIERS or not TIERS[tier]["enabled"]:
         return redirect(url_for("index"))
 
-    return render_template(
-        "pay.html",
-        tier_label=TIERS[tier]["label"],
-        amount=TIERS[tier]["amount"],
-        nedarim_params=build_payment_params(phone, tier),
-    )
+    return redirect(build_payment_url(phone, tier))
 
 
 @app.route("/webhook/nedarim", methods=["POST"])
