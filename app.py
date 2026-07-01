@@ -101,14 +101,27 @@ def pay():
     return redirect(build_payment_url(phone, tier))
 
 
-@app.route("/webhook/nedarim", methods=["POST"])
+@app.route("/webhook/nedarim", methods=["GET", "POST"])
 def webhook_nedarim():
     # NOTE: field names below (Status, Id, TransactionId, Param1, Param2) are
     # best-guess placeholders based on Nedarim Plus's general documentation
     # and other live integrations. They must be verified against a real
     # callback payload once the client shares Mosad ID / test access - see
     # README for the recommended ₪1 real-card test-and-capture approach.
-    payload = request.form.to_dict() or request.get_json(silent=True) or {}
+    #
+    # Accepts both GET and POST since it's unconfirmed which one Nedarim
+    # Plus actually uses for this redirect-style payment form.
+    payload = {
+        **request.args.to_dict(),
+        **request.form.to_dict(),
+        **(request.get_json(silent=True) or {}),
+    }
+    app.logger.warning(
+        "webhook_nedarim hit: method=%s args=%s form=%s",
+        request.method,
+        dict(request.args),
+        dict(request.form),
+    )
 
     phone = payload.get("Param1") or payload.get("param1")
     tier = payload.get("Param2") or payload.get("param2")
