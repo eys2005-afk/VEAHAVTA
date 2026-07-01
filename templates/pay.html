@@ -15,41 +15,64 @@
     <p class="intro">{{ tier_label }} - ₪{{ amount }}</p>
     <p id="pay-error" class="error hidden"></p>
     <iframe id="nedarim-frame" class="nedarim-frame" scrolling="yes" src="https://matara.pro/nedarimplus/iframe/?language=he"></iframe>
+
+    <!-- TEMPORARY debug panel - shows every postMessage the iframe sends us
+         and any JS errors, so we can see the real protocol instead of
+         guessing. Remove once the handshake is confirmed working. -->
+    <div id="debug-panel" style="margin-top:16px; padding:12px; background:#fff3cd; border:1px solid #e0c46c; border-radius:8px; font-family:monospace; font-size:12px; text-align:left; direction:ltr; max-height:300px; overflow:auto;">
+      <strong>Debug log (temporary):</strong>
+      <div id="debug-log"></div>
+    </div>
   </main>
 
   <script>
-    // NOTE: this postMessage handshake is reconstructed from patterns seen
-    // in several other live Nedarim Plus integrations, not from official
-    // documentation - it has NOT been tested against this client's real
-    // Mosad ID yet (unlike the plain redirect form in nedarim.py, which
-    // has). Verify this actually loads/charges correctly once deployed.
     const frame = document.getElementById('nedarim-frame');
-    const errorBox = document.getElementById('pay-error');
     const config = {{ nedarim_params | tojson }};
+    const debugLog = document.getElementById('debug-log');
+
+    function logDebug(label, detail) {
+      const line = document.createElement('div');
+      const time = new Date().toISOString().split('T')[1].split('.')[0];
+      line.textContent = '[' + time + '] ' + label + ': ' + detail;
+      debugLog.appendChild(line);
+    }
 
     function postToNedarim(message) {
-      frame.contentWindow.postMessage(JSON.stringify(message), 'https://matara.pro');
+      const payload = JSON.stringify(message);
+      logDebug('SENT to iframe', payload);
+      frame.contentWindow.postMessage(payload, 'https://matara.pro');
     }
 
     frame.addEventListener('load', function () {
+      logDebug('EVENT', 'iframe load fired');
       postToNedarim({ Name: 'Set', Value: config });
     });
 
     window.addEventListener('message', function (event) {
-      // Accept both matara.pro and www.matara.pro - different Nedarim Plus
-      // integration snippets use each inconsistently.
-      if (event.origin !== 'https://matara.pro' && event.origin !== 'https://www.matara.pro') return;
+      // Log EVERY incoming message regardless of origin, so we can see
+      // what Nedarim Plus actually sends instead of guessing.
+      let dataStr;
+      try {
+        dataStr = typeof event.data === 'string' ? event.data : JSON.stringify(event.data);
+      } catch (err) {
+        dataStr = String(event.data);
+      }
+      logDebug('RECEIVED from origin=' + event.origin, dataStr);
 
       let data = event.data;
       try {
         data = JSON.parse(data);
       } catch (err) {
-        // Some messages (e.g. height updates) may already be plain numbers/objects.
+        // Some messages may already be plain numbers/objects.
       }
 
       if (data && data.Height) {
         frame.style.height = data.Height + 'px';
       }
+    });
+
+    window.addEventListener('error', function (event) {
+      logDebug('JS ERROR', event.message + ' at ' + event.filename + ':' + event.lineno);
     });
   </script>
 </body>
