@@ -17,7 +17,7 @@ CORS(app)
 # to appear on the page; exact wording still pending (see README).
 CLASS_NAME = os.environ.get("CLASS_NAME", "שם השיעור - טרם נמסר")
 
-MARITAL_STATUSES = ["רווק/ה", "נשוי/אה"]
+MARITAL_STATUSES = ["רווק/ה", "בזוגיות", "נשוי/אה"]
 
 
 def _get_request_value(key):
