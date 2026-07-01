@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from flask import Flask, jsonify, redirect, render_template, request, url_for
 from flask_cors import CORS
 
-from nedarim import TIERS, build_payment_url
+from nedarim import TIERS, build_iframe_transaction, build_payment_url
 from sheets import find_registrant, upsert_registrant
 
 load_dotenv()
@@ -18,6 +18,11 @@ CORS(app)
 CLASS_NAME = os.environ.get("CLASS_NAME", "שם השיעור - טרם נמסר")
 
 MARITAL_STATUSES = ["רווק/ה", "בזוגיות", "נשוי/אה"]
+
+# Per Nedarim Plus's official iframe docs: their CallBack always originates
+# from this IP - checked (not enforced yet) to guard against spoofing once
+# the callback is confirmed working end-to-end.
+NEDARIM_CALLBACK_IP = "18.194.219.73"
 
 
 def _get_request_value(key):
@@ -98,7 +103,18 @@ def pay():
     if not phone or not tier or tier not in TIERS or not TIERS[tier]["enabled"]:
         return redirect(url_for("index"))
 
-    return redirect(build_payment_url(phone, tier))
+    registrant = find_registrant(phone) or {}
+    return render_template(
+        "pay.html",
+        tier_label=TIERS[tier]["label"],
+        amount=TIERS[tier]["amount"],
+        transaction=build_iframe_transaction(
+            phone,
+            tier,
+            name=registrant.get("Name", ""),
+            email=registrant.get("Email", ""),
+        ),
+    )
 
 
 @app.route("/webhook/nedarim", methods=["GET", "POST"])
@@ -116,9 +132,12 @@ def webhook_nedarim():
         **request.form.to_dict(),
         **(request.get_json(silent=True) or {}),
     }
+    source_ip = request.headers.get("X-Forwarded-For", request.remote_addr or "").split(",")[0].strip()
     app.logger.warning(
-        "webhook_nedarim hit: method=%s args=%s form=%s",
+        "webhook_nedarim hit: method=%s ip=%s (expected %s) args=%s form=%s",
         request.method,
+        source_ip,
+        NEDARIM_CALLBACK_IP,
         dict(request.args),
         dict(request.form),
     )

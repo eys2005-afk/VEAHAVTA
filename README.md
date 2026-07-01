@@ -6,11 +6,9 @@ QR-code landing page for a class called "ואהבת". Flow:
 2. They pick a tier and enter their phone number.
 3. Returning registrants skip straight to payment; new registrants fill in
    a short details form (`/details`).
-4. `/pay` redirects to Nedarim Plus's hosted payment page - no card data
-   ever touches this server. (An iframe-embedded version was tried so the
-   visitor never leaves the ואהבת page, but the postMessage handshake
-   Nedarim Plus's iframe expects couldn't be reverse-engineered reliably -
-   see "Open items".)
+4. `/pay` embeds Nedarim Plus's payment form in an iframe (per their
+   official iframe integration guide - see "Resolved") so the visitor never
+   leaves the ואהבת page - no card data ever touches this server.
 5. Nedarim Plus calls back `/webhook/nedarim` on completion, and the
    registrant's row in Google Sheets is updated with payment status.
 
@@ -23,7 +21,7 @@ that repo.
 
 - Flask (routes + templates)
 - Google Sheets via `gspread` + a service-account credential
-- Nedarim Plus hosted payment page (redirect + webhook)
+- Nedarim Plus payment form, embedded via iframe + webhook
 - Gunicorn / Render for hosting
 
 ## Project layout
@@ -31,8 +29,9 @@ that repo.
 ```
 app.py            routes: /, /check-phone, /details, /pay, /webhook/nedarim, /api/health
 sheets.py         Google Sheets helpers (get_sheets_client, find_registrant, upsert_registrant)
-nedarim.py        tier config + Nedarim Plus payment URL builder
-templates/        index.html (tier buttons + phone modal), details.html (new-registrant form)
+nedarim.py        tier config + Nedarim Plus payment param/URL builders
+templates/        index.html (tier buttons + phone modal), details.html (new-registrant
+                  form), pay.html (embedded Nedarim Plus iframe)
 static/           style.css, logo.jpg (the client's real logo)
 ```
 
@@ -56,9 +55,14 @@ See `.env.example`. In short:
   to read/write the sheet. The sheet must be shared with that service
   account's email.
 - `NEDARIM_MOSAD_ID` - the institution ID Nedarim Plus assigns per client.
-  Confirmed real value for this client: `7016996`. No `ApiValid` key is
-  needed - verified by live testing against the real Mosad ID.
+  Confirmed real value for this client: `7016996`.
+- `NEDARIM_API_VALID` - a separate auth token required by the iframe's
+  `FinishTransaction2` message, per Nedarim Plus's official docs. Must be
+  requested from Nedarim Plus support - **not yet obtained** (see Open items).
 - `NEDARIM_CALLBACK_URL` - the publicly reachable URL for `/webhook/nedarim`.
+- `NEDARIM_CALLBACK_MAIL_ERROR` - optional email Nedarim Plus notifies if
+  sending the callback fails; if empty, they email the institution's
+  contacts instead.
 - `NEDARIM_MONTHLY_RECURRING_PARAM` - recurring-payment (הוראת קבע) param;
   the monthly tier stays disabled in `nedarim.py` until this is confirmed.
 - `CLASS_NAME` - the class/session name shown under the logo on the landing
@@ -93,14 +97,26 @@ collected during registration.
 
 ## Resolved
 
-- **Nedarim Plus Mosad ID**: `7016996`, confirmed real and working. No
-  `ApiValid` needed. The path/param casing matters: `online/?mosad=...`
-  (lowercase) works; `Online/?Mosad=...` (capitalized) throws a server
-  error on Nedarim Plus's side.
+- **Nedarim Plus Mosad ID**: `7016996`, confirmed real and working.
+- **Official iframe protocol**: the client supplied Nedarim Plus's actual
+  iframe integration guide (PDF). This resolved several earlier guesses:
+  - The plain redirect page (`online/?mosad=...`) does **not** support
+    server-side `CallBack` notifications at all - that's only documented
+    for the iframe flow. This is why earlier real-money ₪1/₪30 tests via
+    the redirect never reached `/webhook/nedarim`, no matter what we
+    changed in our own code.
+  - The iframe handshake sends **raw JS objects via `postMessage` (not
+    `JSON.stringify`'d)**, first `{Name: 'GetHeight'}`, then
+    `{Name: 'FinishTransaction2', Value: {...}}` with the transaction
+    details - not the `{Name: 'Set', ...}` shape we'd guessed earlier.
+  - The response comes back as `{Name: 'TransactionResponse', Value:
+    {Status, Message, ...}}` (`Status == 'Error'` on failure).
+  - `nedarim.py`'s `build_iframe_transaction()` and `templates/pay.html`
+    now implement this documented protocol directly (not a guess).
 - **Google Sheet**: created (`ואהבת - נרשמים`), Hebrew header row added,
   shared with the `veahavta-sheets@veahavta-app.iam.gserviceaccount.com`
-  service account (share itself not yet independently confirmed - will be
-  proven once the app actually writes to it).
+  service account, and confirmed working (real registrant rows have landed
+  in it from live testing).
 - **Logo**: real logo added at `static/logo.jpg`.
 
 ## Deployed
@@ -111,24 +127,29 @@ Live on Render at `https://veahavta-app.onrender.com`, with `GOOGLE_SHEET_ID`,
 
 ## Open items (blocking full wiring)
 
-1. **Webhook payload field names** - `Status`, `Id`, `TransactionId` in
-   `app.py`'s `/webhook/nedarim` are still best-guess placeholders. The
-   fastest way to confirm them: make one real ₪1 charge through the live
-   `/pay` redirect and inspect what Nedarim Plus actually sends to
-   `/webhook/nedarim` (e.g. via temporary logging), then refund/void it via
-   their admin panel.
-2. **Monthly subscription (הוראת קבע) price + recurring parameter** - price
-   wasn't given in the client's brief, and the recurring-payment param name
-   needs the client to check with Nedarim Plus support; the monthly tier is
-   implemented but disabled until both are confirmed.
-3. **Exact class/session name** - `CLASS_NAME` env var is still a placeholder.
-4. **Clarify "weekly"** - a 7-day access window vs. a specific recurring
+1. **`NEDARIM_API_VALID` not yet obtained** - required by the iframe's
+   `FinishTransaction2` message per the official docs; without it the
+   payment form likely won't complete a real charge. Must be requested
+   from Nedarim Plus support directly (separate from the Mosad ID).
+2. **iframe protocol implemented but not yet live-tested** - built directly
+   from Nedarim Plus's own documentation this time (not reverse-engineered
+   guesses), but still needs to be verified in the browser once
+   `NEDARIM_API_VALID` is available.
+3. **Webhook payload field names still partially unconfirmed** - `Status`,
+   `TransactionId` in `/webhook/nedarim` match a real working integration
+   we found (`Status == "OK"` on success), but haven't been confirmed
+   against this client's own account yet, since the previous test channel
+   (the plain redirect) doesn't support callbacks at all (see "Resolved").
+   `app.py` logs the full raw payload of every hit to help confirm this
+   once a real charge goes through the iframe. The docs also state Nedarim
+   Plus's callback always originates from IP `18.194.219.73` - logged
+   (`NEDARIM_CALLBACK_IP` in `app.py`) but not yet enforced; worth adding
+   once confirmed to guard against spoofed callbacks.
+4. **Monthly subscription (הוראת קבע) price + recurring parameter** - price
+   wasn't given in the client's brief; the docs show a `PaymentType: 'HK'`
+   mode with its own `Amount`/`Tashlumim` meaning (monthly amount / number
+   of months), which `build_iframe_transaction()` already switches to for
+   the monthly tier - still disabled until the price is confirmed.
+5. **Exact class/session name** - `CLASS_NAME` env var is still a placeholder.
+6. **Clarify "weekly"** - a 7-day access window vs. a specific recurring
    weekly class session.
-5. **iframe-embedded payment (abandoned for now)** - we tried embedding
-   Nedarim Plus's payment form in an iframe (via `postMessage`) so visitors
-   wouldn't leave the ואהבת page, based on patterns from other live
-   integrations. Live-tested twice with real fixes attempted (message
-   origin, iframe height, key casing) - the iframe never sent any response
-   back regardless. Reverted to the redirect form, which is verified working
-   end-to-end. Worth revisiting only with real documentation or direct
-   support from Nedarim Plus on the exact protocol.
