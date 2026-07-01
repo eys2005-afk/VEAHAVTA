@@ -25,7 +25,11 @@ TIERS = {
     },
 }
 
-NEDARIM_BASE_URL = "https://www.matara.pro/nedarimplus/Online/"
+# Lowercase path + lowercase "mosad" param - verified against the real
+# Mosad ID (7016996): the capitalized "Online/?Mosad=" form throws a server
+# error on Nedarim Plus's side, while this lowercase form works correctly
+# with Amount/AmountLock/CallBack/Param1/Param2, and needs no ApiValid.
+NEDARIM_BASE_URL = "https://www.matara.pro/nedarimplus/online/"
 
 
 def build_payment_url(phone, tier_key):
@@ -34,16 +38,10 @@ def build_payment_url(phone, tier_key):
         raise ValueError(f"Unknown or disabled tier: {tier_key}")
 
     params = {
-        "Mosad": os.environ.get("NEDARIM_MOSAD_ID", ""),
-        # Nedarim Plus requires a per-institution API key alongside Mosad -
-        # confirmed by cross-referencing several other live integrations.
-        "ApiValid": os.environ.get("NEDARIM_API_VALID", ""),
+        "mosad": os.environ.get("NEDARIM_MOSAD_ID", ""),
         "Amount": tier["amount"],
         "AmountLock": 1,
         "CallBack": os.environ.get("NEDARIM_CALLBACK_URL", ""),
-        # Capitalized Param1/Param2 match the field names used by other
-        # live Nedarim Plus integrations - still needs confirmation against
-        # a real callback payload (see README).
         "Param1": phone,
         "Param2": tier_key,
     }
