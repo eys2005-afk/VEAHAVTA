@@ -32,7 +32,11 @@ TIERS = {
 NEDARIM_BASE_URL = "https://www.matara.pro/nedarimplus/online/"
 
 
-def build_payment_url(phone, tier_key):
+def build_payment_params(phone, tier_key):
+    """Shared param set for both the full-page redirect and the iframe
+    postMessage handshake - verified against the real Mosad ID (7016996)
+    for the redirect form; the iframe form uses the same field names but
+    hasn't been tested live yet (see README)."""
     tier = TIERS.get(tier_key)
     if not tier or not tier.get("enabled"):
         raise ValueError(f"Unknown or disabled tier: {tier_key}")
@@ -51,4 +55,10 @@ def build_payment_url(phone, tier_key):
         # (הוראת קבע) payments with Nedarim Plus support.
         params["Tashlumim"] = os.environ.get("NEDARIM_MONTHLY_RECURRING_PARAM", "")
 
+    return params
+
+
+def build_payment_url(phone, tier_key):
+    """Full-page redirect form - verified working against the real Mosad ID."""
+    params = build_payment_params(phone, tier_key)
     return f"{NEDARIM_BASE_URL}?{urlencode(params)}"

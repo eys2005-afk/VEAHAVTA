@@ -50,6 +50,12 @@ body {
   margin-bottom: 24px;
 }
 
+.nedarim-frame {
+  width: 100%;
+  min-height: 600px;
+  border: 0;
+}
+
 .tiers {
   display: flex;
   flex-direction: column;
