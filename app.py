@@ -1,12 +1,22 @@
 import os
+import secrets
 from datetime import date
+from functools import wraps
 
 from dotenv import load_dotenv
-from flask import Flask, jsonify, redirect, render_template, request, url_for
+from flask import Flask, jsonify, redirect, render_template, request, session, url_for
 from flask_cors import CORS
 
 from nedarim import TIERS, build_iframe_transaction, build_payment_url
-from sheets import find_registrant, upsert_registrant
+from sheets import (
+    WEEKDAY_LABELS,
+    WEEKDAY_PY_INDEX,
+    find_registrant,
+    get_all_registrants,
+    get_weekly_schedule,
+    update_weekly_schedule,
+    upsert_registrant,
+)
 
 load_dotenv()
 
@@ -29,7 +39,19 @@ CLASS_NAME_ENV_BY_WEEKDAY = {
 
 
 def get_class_name():
-    day_var = CLASS_NAME_ENV_BY_WEEKDAY[date.today().weekday()]
+    weekday = date.today().weekday()
+    try:
+        # The client edits this weekly from /admin - preferred over the env
+        # vars below, which just stay as a fallback if the sheet is
+        # unreachable (so a transient Sheets error can't break the landing
+        # page for visitors).
+        name = get_weekly_schedule().get(weekday)
+        if name:
+            return name
+    except Exception:
+        pass
+
+    day_var = CLASS_NAME_ENV_BY_WEEKDAY[weekday]
     return (
         os.environ.get(day_var)
         or os.environ.get("CLASS_NAME")
@@ -44,11 +66,23 @@ MARITAL_STATUSES = ["רווק/ה", "בזוגיות", "נשוי/אה"]
 # the callback is confirmed working end-to-end.
 NEDARIM_CALLBACK_IP = "18.194.219.73"
 
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
+
 
 def _get_request_value(key):
     if request.is_json:
         return (request.get_json(silent=True) or {}).get(key)
     return request.form.get(key)
+
+
+def admin_required(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if not session.get("is_admin"):
+            return redirect(url_for("admin_login"))
+        return view(*args, **kwargs)
+
+    return wrapped
 
 
 @app.route("/")
@@ -185,6 +219,47 @@ def webhook_nedarim():
     )
 
     return jsonify({"ok": True})
+
+
+@app.route("/admin/login", methods=["GET", "POST"])
+def admin_login():
+    error = None
+    if request.method == "POST":
+        password = request.form.get("password", "")
+        if ADMIN_PASSWORD and secrets.compare_digest(password, ADMIN_PASSWORD):
+            session["is_admin"] = True
+            return redirect(url_for("admin_dashboard"))
+        error = "סיסמה שגויה"
+    return render_template("admin_login.html", error=error)
+
+
+@app.route("/admin/logout")
+def admin_logout():
+    session.pop("is_admin", None)
+    return redirect(url_for("admin_login"))
+
+
+@app.route("/admin", methods=["GET", "POST"])
+@admin_required
+def admin_dashboard():
+    if request.method == "POST":
+        names_by_label = {
+            label: request.form.get(f"day_{i}", "").strip()
+            for i, label in enumerate(WEEKDAY_LABELS)
+        }
+        update_weekly_schedule(names_by_label)
+        return redirect(url_for("admin_dashboard"))
+
+    schedule = get_weekly_schedule()
+    day_values = [schedule.get(WEEKDAY_PY_INDEX[i], "") for i in range(len(WEEKDAY_LABELS))]
+
+    return render_template(
+        "admin.html",
+        weekday_labels=WEEKDAY_LABELS,
+        day_values=day_values,
+        registrants=get_all_registrants(),
+        sheet_url=f"https://docs.google.com/spreadsheets/d/{os.environ.get('GOOGLE_SHEET_ID', '')}/edit",
+    )
 
 
 @app.route("/api/health")

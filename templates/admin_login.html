@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ניהול - ואהבת</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="header">
+    <img src="{{ url_for('static', filename='logo.png') }}" alt="ואהבת" class="logo">
+  </header>
+
+  <main class="container">
+    <h2>כניסת ניהול</h2>
+
+    {% if error %}
+    <p class="error">{{ error }}</p>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('admin_login') }}" class="details-form">
+      <label for="password">סיסמה</label>
+      <input type="password" id="password" name="password" required autofocus>
+      <button type="submit">כניסה</button>
+    </form>
+  </main>
+</body>
+</html>

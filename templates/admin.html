@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ניהול - ואהבת</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="header">
+    <img src="{{ url_for('static', filename='logo.png') }}" alt="ואהבת" class="logo">
+  </header>
+
+  <main class="admin-container">
+    <div class="admin-top-bar">
+      <h2>ניהול</h2>
+      <a href="{{ url_for('admin_logout') }}">יציאה</a>
+    </div>
+
+    <section class="admin-section">
+      <h3>שיעורי השבוע</h3>
+      <p class="intro">מה שם השיעור בכל יום? השאירו ריק ביום שאין בו שיעור.</p>
+      <form method="POST" action="{{ url_for('admin_dashboard') }}" class="schedule-form">
+        {% for label in weekday_labels %}
+        <label for="day_{{ loop.index0 }}">יום {{ label }}</label>
+        <input type="text" id="day_{{ loop.index0 }}" name="day_{{ loop.index0 }}" value="{{ day_values[loop.index0] }}">
+        {% endfor %}
+        <button type="submit">שמירה</button>
+      </form>
+    </section>
+
+    <section class="admin-section">
+      <h3>נרשמים</h3>
+      <p class="intro">
+        <a href="{{ sheet_url }}" target="_blank" rel="noopener">לפתיחת הגיליון המלא בגוגל שיטס</a>
+      </p>
+      <div class="table-scroll">
+        <table class="registrants-table">
+          <thead>
+            <tr>
+              <th>טלפון</th>
+              <th>שם</th>
+              <th>אימייל</th>
+              <th>מצב משפחתי</th>
+              <th>מסלול</th>
+              <th>סטטוס</th>
+              <th>סכום</th>
+              <th>מזהה עסקה</th>
+              <th>נוצר בתאריך</th>
+              <th>עודכן בתאריך</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in registrants %}
+            <tr>
+              <td>{{ r.get('Phone', '') }}</td>
+              <td>{{ r.get('Name', '') }}</td>
+              <td>{{ r.get('Email', '') }}</td>
+              <td>{{ r.get('MaritalStatus', '') }}</td>
+              <td>{{ r.get('Tier', '') }}</td>
+              <td>{{ r.get('Status', '') }}</td>
+              <td>{{ r.get('Amount', '') }}</td>
+              <td>{{ r.get('TransactionId', '') }}</td>
+              <td>{{ r.get('CreatedAt', '') }}</td>
+              <td>{{ r.get('UpdatedAt', '') }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

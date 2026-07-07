@@ -2,15 +2,19 @@
 
 QR-code landing page for a class called "ואהבת". Flow:
 
-1. Visitor scans a QR code and lands on `/`.
+1. Visitor scans a QR code and lands on `/` ("כמה טוב שבאת!").
 2. They pick a tier and enter their phone number.
-3. Returning registrants skip straight to payment; new registrants fill in
-   a short details form (`/details`).
+3. Returning registrants see a "כיף שהגעת שוב!" greeting and skip straight
+   to payment; new registrants see "ברוך הבא!" on a short details form
+   (`/details`).
 4. `/pay` embeds Nedarim Plus's payment form in an iframe (per their
    official iframe integration guide - see "Resolved") so the visitor never
    leaves the ואהבת page - no card data ever touches this server.
 5. Nedarim Plus calls back `/webhook/nedarim` on completion, and the
    registrant's row in Google Sheets is updated with payment status.
+
+The client manages the site themselves from `/admin` (password-protected):
+editing which class runs on each day of the week, and viewing registrants.
 
 This mirrors the architecture of the client's other project (`chesed-app`):
 Flask + Google Sheets (gspread, service account) + Nedarim Plus hosted
@@ -27,12 +31,16 @@ that repo.
 ## Project layout
 
 ```
-app.py            routes: /, /check-phone, /details, /pay, /webhook/nedarim, /api/health
-sheets.py         Google Sheets helpers (get_sheets_client, find_registrant, upsert_registrant)
+app.py            routes: /, /check-phone, /details, /pay, /webhook/nedarim,
+                  /admin, /admin/login, /admin/logout, /api/health
+sheets.py         Google Sheets helpers - registrants (find_registrant,
+                  upsert_registrant, get_all_registrants) and the weekly
+                  class schedule (get_weekly_schedule, update_weekly_schedule)
 nedarim.py        tier config + Nedarim Plus payment param/URL builders
-templates/        index.html (tier buttons + phone modal), details.html (new-registrant
-                  form), pay.html (embedded Nedarim Plus iframe)
-static/           style.css, logo.jpg (the client's real logo)
+templates/        index.html (tier buttons + phone modal), details.html
+                  (new-registrant form), pay.html (embedded Nedarim Plus
+                  iframe), admin_login.html, admin.html
+static/           style.css, logo.png (the client's real logo)
 ```
 
 ## Local setup
@@ -65,9 +73,23 @@ See `.env.example`. In short:
   contacts instead.
 - `NEDARIM_MONTHLY_RECURRING_PARAM` - recurring-payment (הוראת קבע) param;
   the monthly tier stays disabled in `nedarim.py` until this is confirmed.
-- `CLASS_NAME_SUNDAY` .. `CLASS_NAME_SATURDAY` - per-day override for the
-  class/session name shown under the logo (the class changes daily); falls
-  back to `CLASS_NAME`, then a placeholder, if a given day isn't set.
+- `CLASS_NAME_SUNDAY` .. `CLASS_NAME_SATURDAY` - fallback per-day class name
+  if the Sheet-based schedule (edited from `/admin`) is unreachable; then
+  `CLASS_NAME`, then a placeholder.
+- `ADMIN_PASSWORD` - password for `/admin`. Login is disabled if left empty.
+
+## Admin panel (`/admin`)
+
+Password-protected (`ADMIN_PASSWORD`), lets the client self-serve without
+touching Render or GitHub:
+
+- **Weekly class schedule** - one text field per day of the week ("what's
+  the class name on Sunday / Tuesday / ..."), saved to a `הגדרות` tab added
+  automatically to the same Google Sheet. `get_class_name()` in `app.py`
+  reads this first, falling back to the `CLASS_NAME_*` env vars only if the
+  sheet is unreachable.
+- **Registrants** - a read-only table of everyone who's registered, plus a
+  link to open the full Google Sheet directly.
 
 ## Pricing (per the client)
 
@@ -118,7 +140,7 @@ collected during registration.
   shared with the `veahavta-sheets@veahavta-app.iam.gserviceaccount.com`
   service account, and confirmed working (real registrant rows have landed
   in it from live testing).
-- **Logo**: real logo added at `static/logo.jpg`.
+- **Logo**: real (transparent) logo added at `static/logo.png`.
 
 ## Deployed
 
@@ -151,6 +173,7 @@ Live on Render at `https://veahavta-app.onrender.com`, with `GOOGLE_SHEET_ID`,
    mode with its own `Amount`/`Tashlumim` meaning (monthly amount / number
    of months), which `build_iframe_transaction()` already switches to for
    the monthly tier - still disabled until the price is confirmed.
-5. **Exact class/session name** - `CLASS_NAME` env var is still a placeholder.
+5. **Exact class/session names** - the client sets these weekly from
+   `/admin` now; no code change needed once they start filling it in.
 6. **Clarify "weekly"** - a 7-day access window vs. a specific recurring
    weekly class session.

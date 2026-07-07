@@ -144,6 +144,7 @@ body {
 input[type="tel"],
 input[type="text"],
 input[type="email"],
+input[type="password"],
 select {
   padding: 12px;
   font-size: 1rem;
@@ -178,4 +179,56 @@ button[type="submit"]:hover {
 
 .hidden {
   display: none;
+}
+
+.secure-note {
+  font-size: 0.85rem;
+  font-weight: normal;
+  color: #777;
+}
+
+.admin-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 24px 48px;
+}
+
+.admin-top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.admin-section {
+  margin-top: 32px;
+}
+
+.schedule-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 480px;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.registrants-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.9rem;
+}
+
+.registrants-table th,
+.registrants-table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.registrants-table th {
+  background: var(--primary);
+  color: white;
 }

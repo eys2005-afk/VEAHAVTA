@@ -38,6 +38,14 @@ HEADER_LABELS = {
 }
 _LABEL_TO_KEY = {v: k for k, v in HEADER_LABELS.items()}
 
+# Weekly class schedule, editable by the client from /admin - stored in a
+# second tab on the same spreadsheet rather than env vars, since it needs to
+# be updated weekly without touching Render.
+SETTINGS_SHEET_TITLE = "הגדרות"
+WEEKDAY_LABELS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"]
+# Position in WEEKDAY_LABELS -> Python's date.weekday() (Monday=0..Sunday=6).
+WEEKDAY_PY_INDEX = [6, 0, 1, 2, 3, 4, 5]
+
 _client = None
 
 
@@ -63,6 +71,49 @@ def _get_worksheet():
     client = get_sheets_client()
     sheet_id = os.environ["GOOGLE_SHEET_ID"]
     return client.open_by_key(sheet_id).sheet1
+
+
+def _get_settings_worksheet():
+    client = get_sheets_client()
+    sheet_id = os.environ["GOOGLE_SHEET_ID"]
+    sh = client.open_by_key(sheet_id)
+    try:
+        return sh.worksheet(SETTINGS_SHEET_TITLE)
+    except gspread.WorksheetNotFound:
+        ws = sh.add_worksheet(title=SETTINGS_SHEET_TITLE, rows=10, cols=2)
+        ws.update(
+            range_name="A1:B8",
+            values=[["יום", "שם השיעור"]] + [[label, ""] for label in WEEKDAY_LABELS],
+        )
+        return ws
+
+
+def get_weekly_schedule():
+    """Return {python_weekday_index: class_name} from the settings tab."""
+    ws = _get_settings_worksheet()
+    rows = ws.get_all_values()[1:]  # skip header row
+    schedule = {}
+    for i, py_weekday in enumerate(WEEKDAY_PY_INDEX):
+        schedule[py_weekday] = rows[i][1] if i < len(rows) and len(rows[i]) > 1 else ""
+    return schedule
+
+
+def update_weekly_schedule(names_by_label):
+    """names_by_label: dict of Hebrew day label (WEEKDAY_LABELS) -> class name."""
+    ws = _get_settings_worksheet()
+    values = [["יום", "שם השיעור"]] + [
+        [label, names_by_label.get(label, "")] for label in WEEKDAY_LABELS
+    ]
+    ws.update(range_name="A1:B8", values=values)
+
+
+def get_all_registrants():
+    """All registrant rows (English-keyed dicts), for the admin dashboard."""
+    ws = _get_worksheet()
+    return [
+        {_LABEL_TO_KEY.get(k, k): v for k, v in row.items()}
+        for row in ws.get_all_records()
+    ]
 
 
 def find_registrant(phone):
