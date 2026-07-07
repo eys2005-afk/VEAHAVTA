@@ -38,6 +38,13 @@ body {
   text-align: center;
 }
 
+.greeting {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--primary-dark);
+  margin-bottom: 8px;
+}
+
 .class-name {
   font-size: 1.2rem;
   font-weight: 600;

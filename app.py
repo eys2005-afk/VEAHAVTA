@@ -1,4 +1,5 @@
 import os
+from datetime import date
 
 from dotenv import load_dotenv
 from flask import Flask, jsonify, redirect, render_template, request, url_for
@@ -13,9 +14,28 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev")
 CORS(app)
 
-# Displayed under the logo - client's brief asks for the class/session name
-# to appear on the page; exact wording still pending (see README).
-CLASS_NAME = os.environ.get("CLASS_NAME", "שם השיעור - טרם נמסר")
+# The class changes daily, so the name shown under the logo can be set per
+# day of the week via env vars (falling back to CLASS_NAME, then a
+# placeholder). Python's date.weekday(): Monday=0 ... Sunday=6.
+CLASS_NAME_ENV_BY_WEEKDAY = {
+    6: "CLASS_NAME_SUNDAY",
+    0: "CLASS_NAME_MONDAY",
+    1: "CLASS_NAME_TUESDAY",
+    2: "CLASS_NAME_WEDNESDAY",
+    3: "CLASS_NAME_THURSDAY",
+    4: "CLASS_NAME_FRIDAY",
+    5: "CLASS_NAME_SATURDAY",
+}
+
+
+def get_class_name():
+    day_var = CLASS_NAME_ENV_BY_WEEKDAY[date.today().weekday()]
+    return (
+        os.environ.get(day_var)
+        or os.environ.get("CLASS_NAME")
+        or "שם השיעור - טרם נמסר"
+    )
+
 
 MARITAL_STATUSES = ["רווק/ה", "בזוגיות", "נשוי/אה"]
 
@@ -33,7 +53,7 @@ def _get_request_value(key):
 
 @app.route("/")
 def index():
-    return render_template("index.html", tiers=TIERS, class_name=CLASS_NAME)
+    return render_template("index.html", tiers=TIERS, class_name=get_class_name())
 
 
 @app.route("/check-phone", methods=["POST"])
@@ -49,8 +69,11 @@ def check_phone():
 
     registrant = find_registrant(phone)
     if registrant:
-        # Already registered - skip straight to payment.
-        return jsonify({"known": True, "redirect": url_for("pay", phone=phone, tier=tier)})
+        # Already registered - skip straight to payment, with a "welcome
+        # back" greeting there instead of the new-registrant details form.
+        return jsonify(
+            {"known": True, "redirect": url_for("pay", phone=phone, tier=tier, returning=1)}
+        )
 
     return jsonify({"known": False, "redirect": url_for("details", phone=phone, tier=tier)})
 
@@ -99,6 +122,7 @@ def details():
 def pay():
     phone = request.args.get("phone")
     tier = request.args.get("tier")
+    returning = request.args.get("returning") == "1"
 
     if not phone or not tier or tier not in TIERS or not TIERS[tier]["enabled"]:
         return redirect(url_for("index"))
@@ -108,6 +132,7 @@ def pay():
         "pay.html",
         tier_label=TIERS[tier]["label"],
         amount=TIERS[tier]["amount"],
+        returning=returning,
         transaction=build_iframe_transaction(
             phone,
             tier,

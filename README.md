@@ -65,15 +65,16 @@ See `.env.example`. In short:
   contacts instead.
 - `NEDARIM_MONTHLY_RECURRING_PARAM` - recurring-payment (הוראת קבע) param;
   the monthly tier stays disabled in `nedarim.py` until this is confirmed.
-- `CLASS_NAME` - the class/session name shown under the logo on the landing
-  page; still pending from the client (see Open items).
+- `CLASS_NAME_SUNDAY` .. `CLASS_NAME_SATURDAY` - per-day override for the
+  class/session name shown under the logo (the class changes daily); falls
+  back to `CLASS_NAME`, then a placeholder, if a given day isn't set.
 
-## Pricing (per the client's brief)
+## Pricing (per the client)
 
-| Tier    | Price | Notes                                   |
-|---------|-------|------------------------------------------|
-| Single  | ₪30   |                                          |
-| Weekly  | ₪50   | "Weekly" scope still needs clarifying    |
+| Tier    | Price     | Notes                                   |
+|---------|-----------|------------------------------------------|
+| Single  | ₪30/evening |                                        |
+| Weekly  | ₪75       | "Weekly" scope still needs clarifying    |
 | Monthly | TBD   | Disabled until price + recurring param confirmed |
 
 ## Registrant form fields

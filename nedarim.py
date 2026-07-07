@@ -1,18 +1,18 @@
 import os
 from urllib.parse import urlencode
 
-# Prices per the client's voice-message brief (single=30, weekly=50).
+# Prices per the client (single=30/evening, weekly=75).
 # Monthly amount is still unconfirmed (see README "Open items").
 TIERS = {
     "single": {
-        "label": "שיעור בודד",
+        "label": "ערב בודד",
         "amount": 30,
         "recurring": False,
         "enabled": True,
     },
     "weekly": {
         "label": "מנוי שבועי",
-        "amount": 50,
+        "amount": 75,
         "recurring": False,
         "enabled": True,
     },
