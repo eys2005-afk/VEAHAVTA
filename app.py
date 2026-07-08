@@ -13,8 +13,9 @@ from sheets import (
     WEEKDAY_PY_INDEX,
     find_registrant,
     get_all_registrants,
+    get_site_settings,
     get_weekly_schedule,
-    update_weekly_schedule,
+    update_settings,
     upsert_registrant,
 )
 
@@ -59,6 +60,36 @@ def get_class_name():
     )
 
 
+def get_active_tiers():
+    """The tiers shown on the site right now: the static TIERS, plus
+    /admin's two toggles - free-mode (zeroes every enabled tier's price)
+    and a temporary workshop tier - both editable by the client without a
+    redeploy. Falls back to the plain static tiers if the sheet is
+    unreachable, so a transient Sheets error can't break checkout."""
+    tiers = {key: dict(value) for key, value in TIERS.items()}
+
+    try:
+        settings = get_site_settings()
+    except Exception:
+        return tiers
+
+    if settings["free_mode"]:
+        for tier in tiers.values():
+            if tier["enabled"]:
+                tier["amount"] = 0
+
+    if settings["workshop_enabled"] and settings["workshop_name"] and settings["workshop_amount"] is not None:
+        tiers["workshop"] = {
+            "label": settings["workshop_name"],
+            "amount": settings["workshop_amount"],
+            "recurring": False,
+            "enabled": True,
+            "entries": None,
+        }
+
+    return tiers
+
+
 MARITAL_STATUSES = ["רווק/ה", "בזוגיות", "נשוי/אה"]
 
 # Per Nedarim Plus's official iframe docs: their CallBack always originates
@@ -87,18 +118,19 @@ def admin_required(view):
 
 @app.route("/")
 def index():
-    return render_template("index.html", tiers=TIERS, class_name=get_class_name())
+    return render_template("index.html", tiers=get_active_tiers(), class_name=get_class_name())
 
 
 @app.route("/check-phone", methods=["POST"])
 def check_phone():
     phone = _get_request_value("phone")
     tier = _get_request_value("tier")
+    tiers = get_active_tiers()
 
     if not phone or not tier:
         return jsonify({"error": "phone and tier are required"}), 400
 
-    if tier not in TIERS or not TIERS[tier]["enabled"]:
+    if tier not in tiers or not tiers[tier]["enabled"]:
         return jsonify({"error": "invalid or disabled tier"}), 400
 
     registrant = find_registrant(phone)
@@ -114,6 +146,8 @@ def check_phone():
 
 @app.route("/details", methods=["GET", "POST"])
 def details():
+    tiers = get_active_tiers()
+
     if request.method == "GET":
         phone = request.args.get("phone", "")
         tier = request.args.get("tier", "")
@@ -121,7 +155,7 @@ def details():
             "details.html",
             phone=phone,
             tier=tier,
-            tiers=TIERS,
+            tiers=tiers,
             marital_statuses=MARITAL_STATUSES,
         )
 
@@ -136,7 +170,7 @@ def details():
             "details.html",
             phone=phone,
             tier=tier,
-            tiers=TIERS,
+            tiers=tiers,
             marital_statuses=MARITAL_STATUSES,
             error="נא למלא את כל השדות",
         )
@@ -157,21 +191,47 @@ def pay():
     phone = request.args.get("phone")
     tier = request.args.get("tier")
     returning = request.args.get("returning") == "1"
+    tiers = get_active_tiers()
 
-    if not phone or not tier or tier not in TIERS or not TIERS[tier]["enabled"]:
+    if not phone or not tier or tier not in tiers or not tiers[tier]["enabled"]:
         return redirect(url_for("index"))
 
+    tier_config = tiers[tier]
     registrant = find_registrant(phone) or {}
+
+    # Punch-card check-in: if they're still on the same tier they last paid
+    # for and have visits left, just check them in - no new charge.
+    if tier_config.get("entries") and registrant.get("Tier") == tier:
+        try:
+            entries_remaining = int(registrant.get("EntriesRemaining") or 0)
+        except ValueError:
+            entries_remaining = 0
+        if entries_remaining > 0:
+            upsert_registrant(phone, EntriesRemaining=str(entries_remaining - 1))
+            return render_template(
+                "checkin.html",
+                tier_label=tier_config["label"],
+                entries_remaining=entries_remaining - 1,
+                free=False,
+            )
+
+    # Free-mode (e.g. an opening-month promo): register them directly,
+    # skip Nedarim Plus entirely - there's nothing to charge.
+    if tier_config["amount"] == 0:
+        upsert_registrant(phone, Tier=tier, Status="free", Amount=0)
+        return render_template("checkin.html", tier_label=tier_config["label"], free=True)
+
     return render_template(
         "pay.html",
-        tier_label=TIERS[tier]["label"],
-        amount=TIERS[tier]["amount"],
+        tier_label=tier_config["label"],
+        amount=tier_config["amount"],
         returning=returning,
         transaction=build_iframe_transaction(
             phone,
             tier,
             name=registrant.get("Name", ""),
             email=registrant.get("Email", ""),
+            tier=tier_config,
         ),
     )
 
@@ -211,12 +271,19 @@ def webhook_nedarim():
 
     # "OK" confirmed from a real working Nedarim Plus integration; "1" kept
     # as a fallback guess in case this account's callback shape differs.
-    upsert_registrant(
-        phone,
-        Tier=tier or "",
-        Status="paid" if status in ("OK", "1") else "failed",
-        TransactionId=transaction_id or "",
-    )
+    is_paid = status in ("OK", "1")
+    fields = {
+        "Tier": tier or "",
+        "Status": "paid" if is_paid else "failed",
+        "TransactionId": transaction_id or "",
+    }
+
+    if is_paid:
+        entries = get_active_tiers().get(tier or "", {}).get("entries")
+        if entries:
+            fields["EntriesRemaining"] = str(entries)
+
+    upsert_registrant(phone, **fields)
 
     return jsonify({"ok": True})
 
@@ -247,16 +314,25 @@ def admin_dashboard():
             label: request.form.get(f"day_{i}", "").strip()
             for i, label in enumerate(WEEKDAY_LABELS)
         }
-        update_weekly_schedule(names_by_label)
+        workshop_amount = request.form.get("workshop_amount", "").strip()
+        update_settings(
+            names_by_label,
+            free_mode=request.form.get("free_mode") == "on",
+            workshop_name=request.form.get("workshop_name", "").strip(),
+            workshop_amount=workshop_amount or None,
+            workshop_enabled=request.form.get("workshop_enabled") == "on",
+        )
         return redirect(url_for("admin_dashboard"))
 
     schedule = get_weekly_schedule()
     day_values = [schedule.get(WEEKDAY_PY_INDEX[i], "") for i in range(len(WEEKDAY_LABELS))]
+    settings = get_site_settings()
 
     return render_template(
         "admin.html",
         weekday_labels=WEEKDAY_LABELS,
         day_values=day_values,
+        settings=settings,
         registrants=get_all_registrants(),
         sheet_url=f"https://docs.google.com/spreadsheets/d/{os.environ.get('GOOGLE_SHEET_ID', '')}/edit",
     )

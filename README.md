@@ -14,7 +14,8 @@ QR-code landing page for a class called "ואהבת". Flow:
    registrant's row in Google Sheets is updated with payment status.
 
 The client manages the site themselves from `/admin` (password-protected):
-editing which class runs on each day of the week, and viewing registrants.
+editing which class runs on each day of the week, toggling a free-mode
+promo, adding a temporary workshop tier, and viewing registrants.
 
 This mirrors the architecture of the client's other project (`chesed-app`):
 Flask + Google Sheets (gspread, service account) + Nedarim Plus hosted
@@ -34,12 +35,15 @@ that repo.
 app.py            routes: /, /check-phone, /details, /pay, /webhook/nedarim,
                   /admin, /admin/login, /admin/logout, /api/health
 sheets.py         Google Sheets helpers - registrants (find_registrant,
-                  upsert_registrant, get_all_registrants) and the weekly
-                  class schedule (get_weekly_schedule, update_weekly_schedule)
-nedarim.py        tier config + Nedarim Plus payment param/URL builders
+                  upsert_registrant, get_all_registrants) and site settings:
+                  weekly class schedule + free-mode/workshop toggles
+                  (get_weekly_schedule, get_site_settings, update_settings)
+nedarim.py        tier config (including punch-card "entries") + Nedarim
+                  Plus payment param/URL builders
 templates/        index.html (tier buttons + phone modal), details.html
                   (new-registrant form), pay.html (embedded Nedarim Plus
-                  iframe), admin_login.html, admin.html
+                  iframe), checkin.html (punch-card check-in / free
+                  confirmation), admin_login.html, admin.html
 static/           style.css, logo.png (the client's real logo)
 ```
 
@@ -65,8 +69,9 @@ See `.env.example`. In short:
 - `NEDARIM_MOSAD_ID` - the institution ID Nedarim Plus assigns per client.
   Confirmed real value for this client: `7016996`.
 - `NEDARIM_API_VALID` - a separate auth token required by the iframe's
-  `FinishTransaction2` message, per Nedarim Plus's official docs. Must be
-  requested from Nedarim Plus support - **not yet obtained** (see Open items).
+  `FinishTransaction2` message, per Nedarim Plus's official docs. Obtained
+  from Nedarim Plus (called `ApiPassword` in their email) - set on Render,
+  not committed here.
 - `NEDARIM_CALLBACK_URL` - the publicly reachable URL for `/webhook/nedarim`.
 - `NEDARIM_CALLBACK_MAIL_ERROR` - optional email Nedarim Plus notifies if
   sending the callback fails; if empty, they email the institution's
@@ -81,23 +86,39 @@ See `.env.example`. In short:
 ## Admin panel (`/admin`)
 
 Password-protected (`ADMIN_PASSWORD`), lets the client self-serve without
-touching Render or GitHub:
+touching Render or GitHub. All settings live in a `הגדרות` tab added
+automatically to the same Google Sheet (`sheets.py`'s `get_site_settings`/
+`update_settings`); `get_active_tiers()` in `app.py` reads them on every
+request, falling back to the plain static tiers if the sheet is unreachable:
 
-- **Weekly class schedule** - one text field per day of the week ("what's
-  the class name on Sunday / Tuesday / ..."), saved to a `הגדרות` tab added
-  automatically to the same Google Sheet. `get_class_name()` in `app.py`
-  reads this first, falling back to the `CLASS_NAME_*` env vars only if the
-  sheet is unreachable.
+- **Weekly class schedule** - one text field per day of the week.
+- **Free mode** - a checkbox that zeroes every enabled tier's price (e.g.
+  for an Elul opening-month promo). Visitors still go through the normal
+  scan/phone flow, but `/pay` skips Nedarim Plus entirely and shows "הפעם
+  זה חינם" instead, so they still register and see the app normally.
+- **Temporary workshop tier** - name + price + on/off, shown as an extra
+  button on the same fixed homepage/QR link (no new link needed per event).
 - **Registrants** - a read-only table of everyone who's registered, plus a
   link to open the full Google Sheet directly.
 
 ## Pricing (per the client)
 
-| Tier    | Price     | Notes                                   |
-|---------|-----------|------------------------------------------|
-| Single  | ₪30/evening |                                        |
-| Weekly  | ₪75       | "Weekly" scope still needs clarifying    |
-| Monthly | TBD   | Disabled until price + recurring param confirmed |
+| Tier         | Price       | Notes                                        |
+|--------------|-------------|-----------------------------------------------|
+| Single       | ₪30/evening |                                                |
+| Punch card   | ₪75/3 entries | Replaces the old time-based "weekly" tier - see "Multi-visit tracking" below |
+| Monthly      | TBD         | Disabled until price + recurring param confirmed |
+
+### Multi-visit tracking (punch cards)
+
+There's no physical scanner or door staff, so the only way the app can
+know someone showed up is if they scan the QR code every visit - that part
+doesn't go away. What changes is what happens after: paying for a
+punch-card tier sets `EntriesRemaining` on their Sheet row (`nedarim.py`'s
+`TIERS[...]["entries"]`); scanning again on the *same* tier with visits
+left skips Nedarim Plus entirely and just shows a "✓ נרשמת, נשארו לך X
+כניסות" confirmation while decrementing the count (`/pay` in `app.py`).
+Once it hits zero, the next scan asks for payment again like normal.
 
 ## Registrant form fields
 
@@ -107,12 +128,12 @@ marital status (רווק/ה - נשוי/אה).
 ## Google Sheet expected columns
 
 Row 1 of the sheet must contain these Hebrew headers, in this exact order
-(columns A-J) - `sheets.py`'s `HEADER_LABELS` maps them back to the internal
+(columns A-K) - `sheets.py`'s `HEADER_LABELS` maps them back to the internal
 English field names the code uses:
 
-`טלפון | שם | אימייל | מצב משפחתי | מסלול | סטטוס | סכום | מזהה עסקה | נוצר בתאריך | עודכן בתאריך`
+`טלפון | שם | אימייל | מצב משפחתי | מסלול | סטטוס | סכום | מזהה עסקה | כניסות נותרו | נוצר בתאריך | עודכן בתאריך`
 
-(internally: `Phone | Name | Email | MaritalStatus | Tier | Status | Amount | TransactionId | CreatedAt | UpdatedAt`)
+(internally: `Phone | Name | Email | MaritalStatus | Tier | Status | Amount | TransactionId | EntriesRemaining | CreatedAt | UpdatedAt`)
 
 `upsert_registrant` merges fields into the existing row (matched by phone)
 rather than overwriting it, so the payment webhook can't blank out details
@@ -150,15 +171,11 @@ Live on Render at `https://veahavta-app.onrender.com`, with `GOOGLE_SHEET_ID`,
 
 ## Open items (blocking full wiring)
 
-1. **`NEDARIM_API_VALID` not yet obtained** - required by the iframe's
-   `FinishTransaction2` message per the official docs; without it the
-   payment form likely won't complete a real charge. Must be requested
-   from Nedarim Plus support directly (separate from the Mosad ID).
-2. **iframe protocol implemented but not yet live-tested** - built directly
-   from Nedarim Plus's own documentation this time (not reverse-engineered
-   guesses), but still needs to be verified in the browser once
-   `NEDARIM_API_VALID` is available.
-3. **Webhook payload field names still partially unconfirmed** - `Status`,
+1. **iframe protocol implemented but not yet live-tested with `NEDARIM_API_VALID`
+   set** - built directly from Nedarim Plus's own documentation (not
+   reverse-engineered guesses); now that the client has the real
+   `ApiValid`, this needs to be verified in the browser with a real charge.
+2. **Webhook payload field names still partially unconfirmed** - `Status`,
    `TransactionId` in `/webhook/nedarim` match a real working integration
    we found (`Status == "OK"` on success), but haven't been confirmed
    against this client's own account yet, since the previous test channel
@@ -168,12 +185,10 @@ Live on Render at `https://veahavta-app.onrender.com`, with `GOOGLE_SHEET_ID`,
    Plus's callback always originates from IP `18.194.219.73` - logged
    (`NEDARIM_CALLBACK_IP` in `app.py`) but not yet enforced; worth adding
    once confirmed to guard against spoofed callbacks.
-4. **Monthly subscription (הוראת קבע) price + recurring parameter** - price
+3. **Monthly subscription (הוראת קבע) price + recurring parameter** - price
    wasn't given in the client's brief; the docs show a `PaymentType: 'HK'`
    mode with its own `Amount`/`Tashlumim` meaning (monthly amount / number
    of months), which `build_iframe_transaction()` already switches to for
    the monthly tier - still disabled until the price is confirmed.
-5. **Exact class/session names** - the client sets these weekly from
+4. **Exact class/session names** - the client sets these weekly from
    `/admin` now; no code change needed once they start filling it in.
-6. **Clarify "weekly"** - a 7-day access window vs. a specific recurring
-   weekly class session.

@@ -210,6 +210,13 @@ button[type="submit"]:hover {
   max-width: 480px;
 }
 
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
 .table-scroll {
   overflow-x: auto;
 }

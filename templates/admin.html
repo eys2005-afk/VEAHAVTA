@@ -17,17 +17,46 @@
       <a href="{{ url_for('admin_logout') }}">יציאה</a>
     </div>
 
-    <section class="admin-section">
-      <h3>שיעורי השבוע</h3>
-      <p class="intro">מה שם השיעור בכל יום? השאירו ריק ביום שאין בו שיעור.</p>
-      <form method="POST" action="{{ url_for('admin_dashboard') }}" class="schedule-form">
-        {% for label in weekday_labels %}
-        <label for="day_{{ loop.index0 }}">יום {{ label }}</label>
-        <input type="text" id="day_{{ loop.index0 }}" name="day_{{ loop.index0 }}" value="{{ day_values[loop.index0] }}">
-        {% endfor %}
-        <button type="submit">שמירה</button>
-      </form>
-    </section>
+    <form method="POST" action="{{ url_for('admin_dashboard') }}">
+      <section class="admin-section">
+        <h3>שיעורי השבוע</h3>
+        <p class="intro">מה שם השיעור בכל יום? השאירו ריק ביום שאין בו שיעור.</p>
+        <div class="schedule-form">
+          {% for label in weekday_labels %}
+          <label for="day_{{ loop.index0 }}">יום {{ label }}</label>
+          <input type="text" id="day_{{ loop.index0 }}" name="day_{{ loop.index0 }}" value="{{ day_values[loop.index0] }}">
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="admin-section">
+        <h3>מצב חינם</h3>
+        <p class="intro">כשמסומן, כל המסלולים הקיימים יוצגו בחינם (למשל לחודש פתיחה).</p>
+        <label class="checkbox-label">
+          <input type="checkbox" name="free_mode" {% if settings.free_mode %}checked{% endif %}>
+          הפעל מצב חינם
+        </label>
+      </section>
+
+      <section class="admin-section">
+        <h3>סדנה זמנית</h3>
+        <p class="intro">מוסיף כפתור מסלול נוסף בדף הראשי, בנוסף לקיימים.</p>
+        <div class="schedule-form">
+          <label for="workshop_name">שם הסדנה</label>
+          <input type="text" id="workshop_name" name="workshop_name" value="{{ settings.workshop_name }}">
+
+          <label for="workshop_amount">מחיר (₪)</label>
+          <input type="text" id="workshop_amount" name="workshop_amount" value="{{ settings.workshop_amount if settings.workshop_amount is not none else '' }}">
+
+          <label class="checkbox-label">
+            <input type="checkbox" name="workshop_enabled" {% if settings.workshop_enabled %}checked{% endif %}>
+            הצג את הסדנה בדף הראשי
+          </label>
+        </div>
+      </section>
+
+      <button type="submit">שמירה</button>
+    </form>
 
     <section class="admin-section">
       <h3>נרשמים</h3>
@@ -45,6 +74,7 @@
               <th>מסלול</th>
               <th>סטטוס</th>
               <th>סכום</th>
+              <th>כניסות נותרו</th>
               <th>מזהה עסקה</th>
               <th>נוצר בתאריך</th>
               <th>עודכן בתאריך</th>
@@ -60,6 +90,7 @@
               <td>{{ r.get('Tier', '') }}</td>
               <td>{{ r.get('Status', '') }}</td>
               <td>{{ r.get('Amount', '') }}</td>
+              <td>{{ r.get('EntriesRemaining', '') }}</td>
               <td>{{ r.get('TransactionId', '') }}</td>
               <td>{{ r.get('CreatedAt', '') }}</td>
               <td>{{ r.get('UpdatedAt', '') }}</td>

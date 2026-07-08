@@ -17,6 +17,7 @@ HEADERS = [
     "Status",
     "Amount",
     "TransactionId",
+    "EntriesRemaining",
     "CreatedAt",
     "UpdatedAt",
 ]
@@ -33,18 +34,32 @@ HEADER_LABELS = {
     "Status": "סטטוס",
     "Amount": "סכום",
     "TransactionId": "מזהה עסקה",
+    "EntriesRemaining": "כניסות נותרו",
     "CreatedAt": "נוצר בתאריך",
     "UpdatedAt": "עודכן בתאריך",
 }
 _LABEL_TO_KEY = {v: k for k, v in HEADER_LABELS.items()}
 
-# Weekly class schedule, editable by the client from /admin - stored in a
-# second tab on the same spreadsheet rather than env vars, since it needs to
-# be updated weekly without touching Render.
+# Weekly class schedule + site toggles, all editable by the client from
+# /admin - stored in a second tab on the same spreadsheet rather than env
+# vars/code, since they need to change often without touching Render/GitHub.
 SETTINGS_SHEET_TITLE = "הגדרות"
 WEEKDAY_LABELS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"]
 # Position in WEEKDAY_LABELS -> Python's date.weekday() (Monday=0..Sunday=6).
 WEEKDAY_PY_INDEX = [6, 0, 1, 2, 3, 4, 5]
+
+# Extra settings rows, below the 7 weekday rows in the same tab.
+FREE_MODE_LABEL = "מצב חינם (כן/לא)"
+WORKSHOP_NAME_LABEL = "סדנה - שם"
+WORKSHOP_AMOUNT_LABEL = "סדנה - מחיר"
+WORKSHOP_ENABLED_LABEL = "סדנה - פעילה (כן/לא)"
+EXTRA_SETTINGS_LABELS = [
+    FREE_MODE_LABEL,
+    WORKSHOP_NAME_LABEL,
+    WORKSHOP_AMOUNT_LABEL,
+    WORKSHOP_ENABLED_LABEL,
+]
+SETTINGS_ROW_LABELS = WEEKDAY_LABELS + EXTRA_SETTINGS_LABELS
 
 _client = None
 
@@ -77,34 +92,63 @@ def _get_settings_worksheet():
     client = get_sheets_client()
     sheet_id = os.environ["GOOGLE_SHEET_ID"]
     sh = client.open_by_key(sheet_id)
+    end_row = 1 + len(SETTINGS_ROW_LABELS)
     try:
         return sh.worksheet(SETTINGS_SHEET_TITLE)
     except gspread.WorksheetNotFound:
-        ws = sh.add_worksheet(title=SETTINGS_SHEET_TITLE, rows=10, cols=2)
+        ws = sh.add_worksheet(title=SETTINGS_SHEET_TITLE, rows=end_row + 2, cols=2)
         ws.update(
-            range_name="A1:B8",
-            values=[["יום", "שם השיעור"]] + [[label, ""] for label in WEEKDAY_LABELS],
+            range_name=f"A1:B{end_row}",
+            values=[["הגדרה", "ערך"]] + [[label, ""] for label in SETTINGS_ROW_LABELS],
         )
         return ws
 
 
-def get_weekly_schedule():
-    """Return {python_weekday_index: class_name} from the settings tab."""
+def _read_settings_rows():
+    """Return {row_label: value} for every row in SETTINGS_ROW_LABELS."""
     ws = _get_settings_worksheet()
     rows = ws.get_all_values()[1:]  # skip header row
-    schedule = {}
-    for i, py_weekday in enumerate(WEEKDAY_PY_INDEX):
-        schedule[py_weekday] = rows[i][1] if i < len(rows) and len(rows[i]) > 1 else ""
-    return schedule
+    values = {}
+    for i, label in enumerate(SETTINGS_ROW_LABELS):
+        values[label] = rows[i][1] if i < len(rows) and len(rows[i]) > 1 else ""
+    return values
 
 
-def update_weekly_schedule(names_by_label):
+def get_weekly_schedule():
+    """Return {python_weekday_index: class_name} from the settings tab."""
+    values = _read_settings_rows()
+    return {WEEKDAY_PY_INDEX[i]: values[label] for i, label in enumerate(WEEKDAY_LABELS)}
+
+
+def get_site_settings():
+    """Free-mode toggle + a single temporary workshop tier, both editable
+    from /admin without a code change or redeploy."""
+    values = _read_settings_rows()
+    try:
+        workshop_amount = int(values.get(WORKSHOP_AMOUNT_LABEL, ""))
+    except (TypeError, ValueError):
+        workshop_amount = None
+
+    return {
+        "free_mode": values.get(FREE_MODE_LABEL, "").strip() == "כן",
+        "workshop_name": values.get(WORKSHOP_NAME_LABEL, ""),
+        "workshop_amount": workshop_amount,
+        "workshop_enabled": values.get(WORKSHOP_ENABLED_LABEL, "").strip() == "כן",
+    }
+
+
+def update_settings(names_by_label, free_mode, workshop_name, workshop_amount, workshop_enabled):
     """names_by_label: dict of Hebrew day label (WEEKDAY_LABELS) -> class name."""
     ws = _get_settings_worksheet()
-    values = [["יום", "שם השיעור"]] + [
-        [label, names_by_label.get(label, "")] for label in WEEKDAY_LABELS
-    ]
-    ws.update(range_name="A1:B8", values=values)
+    row_values = {label: names_by_label.get(label, "") for label in WEEKDAY_LABELS}
+    row_values[FREE_MODE_LABEL] = "כן" if free_mode else "לא"
+    row_values[WORKSHOP_NAME_LABEL] = workshop_name
+    row_values[WORKSHOP_AMOUNT_LABEL] = str(workshop_amount) if workshop_amount not in (None, "") else ""
+    row_values[WORKSHOP_ENABLED_LABEL] = "כן" if workshop_enabled else "לא"
+
+    end_row = 1 + len(SETTINGS_ROW_LABELS)
+    values = [["הגדרה", "ערך"]] + [[label, row_values[label]] for label in SETTINGS_ROW_LABELS]
+    ws.update(range_name=f"A1:B{end_row}", values=values)
 
 
 def get_all_registrants():

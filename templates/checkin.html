@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>נרשמת - ואהבת</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="header">
+    <img src="{{ url_for('static', filename='logo.png') }}" alt="ואהבת" class="logo">
+  </header>
+
+  <main class="container">
+    <p class="greeting">✓ נרשמת!</p>
+    <p class="intro">{{ tier_label }}</p>
+
+    {% if free %}
+    <p class="intro">הפעם זה חינם - תיהנו!</p>
+    {% else %}
+    <p class="intro">נשארו לך {{ entries_remaining }} כניסות</p>
+    {% endif %}
+  </main>
+</body>
+</html>
