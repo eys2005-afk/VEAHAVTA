@@ -288,22 +288,6 @@ def webhook_nedarim():
     return jsonify({"ok": True})
 
 
-@app.route("/admin/debug")
-def admin_debug():
-    # TEMPORARY - proves what the running server actually has for
-    # ADMIN_PASSWORD, instead of guessing at typos/deploy timing. Remove
-    # once the login issue is confirmed fixed.
-    value = os.environ.get("ADMIN_PASSWORD", "")
-    return jsonify(
-        {
-            "is_set": bool(value),
-            "length": len(value),
-            "first_char": value[0] if value else None,
-            "last_char": value[-1] if value else None,
-        }
-    )
-
-
 @app.route("/admin/login", methods=["GET", "POST"])
 def admin_login():
     error = None
