@@ -207,6 +207,18 @@ def pay():
     tier_config = tiers[tier]
     registrant = find_registrant(phone) or {}
 
+    # TEMPORARY diagnostic for the "סיסמת אימות לא תקינה" error from Nedarim
+    # Plus - confirms whether NEDARIM_API_VALID is actually being read (and
+    # under what length/shape) without logging the secret value itself.
+    _api_valid = os.environ.get("NEDARIM_API_VALID", "")
+    app.logger.warning(
+        "NEDARIM_API_VALID check: set=%s len=%d preview=%s… mosad=%s",
+        bool(_api_valid),
+        len(_api_valid),
+        (_api_valid[:2] + "..." + _api_valid[-2:]) if len(_api_valid) >= 4 else "(too short)",
+        os.environ.get("NEDARIM_MOSAD_ID", "(empty)"),
+    )
+
     # Punch-card check-in: if they're still on the same tier they last paid
     # for and have visits left, just check them in - no new charge.
     if tier_config.get("entries") and registrant.get("Tier") == tier:
