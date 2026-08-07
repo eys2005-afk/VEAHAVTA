@@ -38,6 +38,23 @@ TIERS = {
 NEDARIM_BASE_URL = "https://www.matara.pro/nedarimplus/online/"
 
 
+def test_charge_amount():
+    """TEMPORARY: while confirming the real Mosad ID / NEDARIM_API_VALID
+    integration end-to-end, set NEDARIM_TEST_AMOUNT=1 on Render to force
+    every real charge down to ₪1 regardless of tier - so live-testing the
+    payment flow doesn't cost real tier prices. The site still *displays*
+    each tier's real price (₪30, ₪75, ...); only the amount actually sent
+    to Nedarim Plus is overridden. Unset the env var on Render once testing
+    is done to go back to real prices."""
+    raw = os.environ.get("NEDARIM_TEST_AMOUNT", "").strip()
+    if not raw:
+        return None
+    try:
+        return int(raw)
+    except ValueError:
+        return None
+
+
 def build_payment_params(phone, tier_key, tier=None):
     """Shared param set for both the full-page redirect and the iframe
     postMessage handshake - verified against the real Mosad ID (7016996)
@@ -53,7 +70,7 @@ def build_payment_params(phone, tier_key, tier=None):
 
     params = {
         "mosad": os.environ.get("NEDARIM_MOSAD_ID", ""),
-        "Amount": tier["amount"],
+        "Amount": test_charge_amount() or tier["amount"],
         "AmountLock": 1,
         "CallBack": os.environ.get("NEDARIM_CALLBACK_URL", ""),
         "Param1": phone,
@@ -93,7 +110,7 @@ def build_iframe_transaction(phone, tier_key, name="", email="", tier=None):
         "Mosad": os.environ.get("NEDARIM_MOSAD_ID", ""),
         "ApiValid": os.environ.get("NEDARIM_API_VALID", ""),
         "PaymentType": "HK" if tier["recurring"] else "Ragil",
-        "Amount": tier["amount"],
+        "Amount": test_charge_amount() or tier["amount"],
         "Tashlumim": (
             os.environ.get("NEDARIM_MONTHLY_RECURRING_PARAM", "")
             if tier["recurring"]

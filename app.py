@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from flask import Flask, jsonify, redirect, render_template, request, session, url_for
 from flask_cors import CORS
 
-from nedarim import TIERS, build_iframe_transaction, build_payment_url
+from nedarim import TIERS, build_iframe_transaction, build_payment_url, test_charge_amount
 from sheets import (
     WEEKDAY_LABELS,
     WEEKDAY_PY_INDEX,
@@ -233,6 +233,7 @@ def pay():
         "pay.html",
         tier_label=tier_config["label"],
         amount=tier_config["amount"],
+        test_charge_amount=test_charge_amount(),
         returning=returning,
         transaction=build_iframe_transaction(
             phone,

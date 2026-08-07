@@ -19,6 +19,9 @@
     <p class="greeting">כיף שהגעת שוב!</p>
     {% endif %}
     <p class="intro">{{ tier_label }} - ₪{{ amount }}</p>
+    {% if test_charge_amount %}
+    <p class="error">⚠️ מצב בדיקה פעיל - החיוב בפועל יהיה ₪{{ test_charge_amount }} בלבד, לא ₪{{ amount }}</p>
+    {% endif %}
     <p id="pay-loading" class="intro">טוען טופס תשלום מאובטח…</p>
     <p id="pay-error" class="error hidden"></p>
     <iframe id="nedarim-frame" class="nedarim-frame" src="https://matara.pro/nedarimplus/iframe?language=he"></iframe>
