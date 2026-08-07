@@ -157,6 +157,9 @@ def details():
             tier=tier,
             tiers=tiers,
             marital_statuses=MARITAL_STATUSES,
+            name="",
+            email="",
+            marital_status="",
         )
 
     phone = request.form.get("phone")
@@ -166,12 +169,17 @@ def details():
     marital_status = request.form.get("marital_status")
 
     if not phone or not tier or not name or not email or not marital_status:
+        # Re-render with whatever they already typed still filled in - only
+        # the missing field(s) should need re-entering, not the whole form.
         return render_template(
             "details.html",
             phone=phone,
             tier=tier,
             tiers=tiers,
             marital_statuses=MARITAL_STATUSES,
+            name=name or "",
+            email=email or "",
+            marital_status=marital_status or "",
             error="נא למלא את כל השדות",
         )
 

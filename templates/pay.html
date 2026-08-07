@@ -19,6 +19,7 @@
     <p class="greeting">כיף שהגעת שוב!</p>
     {% endif %}
     <p class="intro">{{ tier_label }} - ₪{{ amount }}</p>
+    <p id="pay-loading" class="intro">טוען טופס תשלום מאובטח…</p>
     <p id="pay-error" class="error hidden"></p>
     <iframe id="nedarim-frame" class="nedarim-frame" src="https://matara.pro/nedarimplus/iframe?language=he"></iframe>
   </main>
@@ -35,8 +36,10 @@
     // Messages are sent as raw objects via postMessage (NOT JSON.stringify),
     // matching Nedarim Plus's own sample code.
     const frame = document.getElementById('nedarim-frame');
+    const loadingBox = document.getElementById('pay-loading');
     const errorBox = document.getElementById('pay-error');
     const transaction = {{ transaction | tojson }};
+    let formReady = false;
 
     function postToNedarim(data) {
       frame.contentWindow.postMessage(data, '*');
@@ -54,6 +57,8 @@
       if (!message || !message.Name) return;
 
       if (message.Name === 'Height') {
+        formReady = true;
+        loadingBox.classList.add('hidden');
         frame.style.height = (parseInt(message.Value, 10) + 15) + 'px';
       } else if (message.Name === 'TransactionResponse') {
         if (message.Value && message.Value.Status === 'Error') {
@@ -62,6 +67,18 @@
         }
       }
     });
+
+    // The iframe form itself renders Nedarim Plus's card fields + charge
+    // button once it accepts FinishTransaction2 - if that handshake never
+    // completes (e.g. a misconfigured/missing NEDARIM_API_VALID), the user
+    // would otherwise just see a blank area with no explanation.
+    setTimeout(function () {
+      if (!formReady) {
+        loadingBox.classList.add('hidden');
+        errorBox.textContent = 'טופס התשלום לא נטען כראוי. נסו לרענן את הדף, ואם הבעיה נמשכת פנו אלינו.';
+        errorBox.classList.remove('hidden');
+      }
+    }, 8000);
   </script>
 </body>
 </html>

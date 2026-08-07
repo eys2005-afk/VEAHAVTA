@@ -17,7 +17,10 @@
   <main class="admin-container">
     <div class="admin-top-bar">
       <h2>ניהול</h2>
-      <a href="{{ url_for('admin_logout') }}">יציאה</a>
+      <div class="admin-top-links">
+        <a href="{{ url_for('index') }}">🏠 צפייה באתר</a>
+        <a href="{{ url_for('admin_logout') }}">יציאה</a>
+      </div>
     </div>
 
     <form method="POST" action="{{ url_for('admin_dashboard') }}">

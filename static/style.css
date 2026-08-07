@@ -261,6 +261,22 @@ button[type="submit"]:hover {
   align-items: center;
 }
 
+.admin-top-links {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.admin-top-links a {
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.admin-top-links a:hover {
+  text-decoration: underline;
+}
+
 .admin-section {
   margin-top: 32px;
 }
