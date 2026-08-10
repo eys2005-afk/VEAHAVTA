@@ -168,7 +168,17 @@ def details():
     email = request.form.get("email")
     marital_status = request.form.get("marital_status")
 
-    if not phone or not tier or not name or not email or not marital_status:
+    # Nedarim Plus's payment form requires a separate first + last name
+    # (see build_iframe_transaction) - a single-word "name" leaves LastName
+    # empty and the iframe silently blocks payment with "נא לציין שם פרטי
+    # ומשפחה", so this must be caught here instead of surfacing there.
+    has_full_name = name and len(name.split()) >= 2
+
+    if not phone or not tier or not name or not email or not marital_status or not has_full_name:
+        error = "נא למלא את כל השדות"
+        if name and not has_full_name:
+            error = "נא להזין שם פרטי ושם משפחה (לא רק שם אחד)"
+
         # Re-render with whatever they already typed still filled in - only
         # the missing field(s) should need re-entering, not the whole form.
         return render_template(
@@ -180,7 +190,7 @@ def details():
             name=name or "",
             email=email or "",
             marital_status=marital_status or "",
-            error="נא למלא את כל השדות",
+            error=error,
         )
 
     upsert_registrant(

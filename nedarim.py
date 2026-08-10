@@ -104,7 +104,17 @@ def build_iframe_transaction(phone, tier_key, name="", email="", tier=None):
     if not tier or not tier.get("enabled"):
         raise ValueError(f"Unknown or disabled tier: {tier_key}")
 
-    first_name, _, last_name = (name or "").partition(" ")
+    # Split on the *last* space so a multi-word first name (e.g. "בן דוד
+    # כהן") still gets a real surname, not just the last of three words
+    # attached to nothing. app.py's /details already requires at least two
+    # words before it ever reaches here, but this stays defensive in case
+    # a registrant's name was saved some other way (e.g. directly in the
+    # Sheet by the client).
+    name_parts = (name or "").split()
+    if len(name_parts) >= 2:
+        first_name, last_name = " ".join(name_parts[:-1]), name_parts[-1]
+    else:
+        first_name, last_name = (name_parts[0] if name_parts else ""), ""
 
     return {
         "Mosad": os.environ.get("NEDARIM_MOSAD_ID", ""),
