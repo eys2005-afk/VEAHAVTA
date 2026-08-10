@@ -277,19 +277,29 @@ def webhook_nedarim():
     #
     # Accepts both GET and POST since it's unconfirmed which one Nedarim
     # Plus actually uses for this redirect-style payment form.
+    #
+    # force=True on get_json: confirmed via a real callback (2026-08-10) that
+    # Nedarim Plus doesn't send a Content-Type Flask recognizes as JSON, so
+    # request.form/request.args came back empty and get_json(silent=True)
+    # (without force) silently found nothing too - the callback was real
+    # (from their documented IP) but got dropped with a 400. force=True
+    # parses the body as JSON regardless of Content-Type.
+    raw_body = request.get_data(as_text=True)
     payload = {
         **request.args.to_dict(),
         **request.form.to_dict(),
-        **(request.get_json(silent=True) or {}),
+        **(request.get_json(silent=True, force=True) or {}),
     }
     source_ip = request.headers.get("X-Forwarded-For", request.remote_addr or "").split(",")[0].strip()
     app.logger.warning(
-        "webhook_nedarim hit: method=%s ip=%s (expected %s) args=%s form=%s",
+        "webhook_nedarim hit: method=%s ip=%s (expected %s) content_type=%s args=%s form=%s raw_body=%s",
         request.method,
         source_ip,
         NEDARIM_CALLBACK_IP,
+        request.content_type,
         dict(request.args),
         dict(request.form),
+        raw_body,
     )
 
     phone = payload.get("Param1") or payload.get("param1")
@@ -298,6 +308,10 @@ def webhook_nedarim():
     transaction_id = payload.get("TransactionId") or payload.get("Id")
 
     if not phone:
+        # Still log what we *did* get, even on failure - the whole point of
+        # this diagnostic is to catch the field names on the next real
+        # callback if this still isn't enough to parse it.
+        app.logger.warning("webhook_nedarim: no phone found in payload=%s", payload)
         return jsonify({"error": "missing phone (param1)"}), 400
 
     # "OK" confirmed from a real working Nedarim Plus integration; "1" kept
