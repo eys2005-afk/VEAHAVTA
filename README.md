@@ -166,9 +166,25 @@ collected during registration.
   (client-supplied PDF, `debitiframe2.pdf`) states every parameter in it
   is mandatory to include, **even empty** ("חובה לרשום את כל הפרמטרים, גם
   אם הם ריקים"). Omitting unused ones (`Zeout`/`Street`/`City`/`Groupe`/
-  `Comment`) made Nedarim Plus reject every transaction with a misleading
-  "נא לציין שם פרטי ומשפחה" error - `build_iframe_transaction()` now sends
-  the full 19-field set field-for-field, matching the table exactly.
+  `Comment`) was one real bug - `build_iframe_transaction()` sends the
+  full 19-field set field-for-field now. The actual root cause of the
+  persistent "נא לציין שם פרטי ומשפחה" rejection (survived a correct
+  ApiValid, the full field set, a real button click, real card details -
+  every single attempt, no exceptions) turned out to be simpler: the PDF
+  table describes `FirstName`/`LastName` as if they were meant to be
+  split, but Nedarim Plus's own reference implementation
+  (`sample2.html`, view-sourced directly - see git history for the full
+  file) puts the *entire* name into `FirstName` and always sends
+  `LastName: ''`. Splitting the name (which matched the table's field
+  descriptions, but not their actual code) was the real bug the whole
+  time - none of the other suspects were ever the actual problem.
+- **The submit button lives on the host page, not inside the iframe**:
+  confirmed from `sample2.html`'s layout - card fields are inside the
+  iframe, but "ביצוע תשלום" is a button on the *parent* page, and
+  `FinishTransaction2` is only sent from that button's click handler,
+  never automatically on iframe load. `templates/pay.html` now matches
+  this (reveals its own submit button once the iframe reports its
+  height, sends the transaction only on click).
 - **`/webhook/nedarim` Content-Type**: a real callback (confirmed via the
   documented source IP) was being dropped with a 400 - Nedarim Plus sends
   the callback body as JSON without a `Content-Type` Flask recognizes as
