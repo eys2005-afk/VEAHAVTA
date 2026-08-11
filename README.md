@@ -165,26 +165,32 @@ collected during registration.
 - **`FinishTransaction2` payload shape**: the official PostNedarim table
   (client-supplied PDF, `debitiframe2.pdf`) states every parameter in it
   is mandatory to include, **even empty** ("חובה לרשום את כל הפרמטרים, גם
-  אם הם ריקים"). Omitting unused ones (`Zeout`/`Street`/`City`/`Groupe`/
-  `Comment`) was one real bug - `build_iframe_transaction()` sends the
-  full 19-field set field-for-field now. The actual root cause of the
-  persistent "נא לציין שם פרטי ומשפחה" rejection (survived a correct
-  ApiValid, the full field set, a real button click, real card details -
-  every single attempt, no exceptions) turned out to be simpler: the PDF
-  table describes `FirstName`/`LastName` as if they were meant to be
-  split, but Nedarim Plus's own reference implementation
-  (`sample2.html`, view-sourced directly - see git history for the full
-  file) puts the *entire* name into `FirstName` and always sends
-  `LastName: ''`. Splitting the name (which matched the table's field
-  descriptions, but not their actual code) was the real bug the whole
-  time - none of the other suspects were ever the actual problem.
+  אם הם ריקים") - `build_iframe_transaction()` sends the full 19-field
+  set field-for-field. Nedarim Plus's own reference implementation
+  (`sample2.html`, view-sourced directly) also puts the *entire* name
+  into `FirstName` and always sends `LastName: ''`, rather than splitting
+  it - matched now.
 - **The submit button lives on the host page, not inside the iframe**:
   confirmed from `sample2.html`'s layout - card fields are inside the
   iframe, but "ביצוע תשלום" is a button on the *parent* page, and
   `FinishTransaction2` is only sent from that button's click handler,
-  never automatically on iframe load. `templates/pay.html` now matches
-  this (reveals its own submit button once the iframe reports its
-  height, sends the transaction only on click).
+  never automatically on iframe load. `templates/pay.html` matches this.
+- **The real root cause of every "נא לציין שם פרטי ומשפחה" rejection**
+  (survived a correct ApiValid, the full field set, a real button click,
+  real card details - every attempt): `gspread`'s `get_all_records()`
+  auto-converts number-looking cells to real int/float by default,
+  regardless of the cell's actual stored format - `"0542236262"` (phone,
+  stored as text) was silently becoming the int `542236262`, dropping the
+  leading zero, so `find_registrant()` never matched any phone against
+  any row, ever. `/pay` built every transaction from an empty `{}`
+  registrant as a result. Fixed by passing `numericise_ignore=["all"]` to
+  both `get_all_records()` call sites in `sheets.py`. **Confirmed working
+  end-to-end 2026-08-11**: a real ₪1 test charge completed, Nedarim Plus
+  called `/webhook/nedarim` with a success response, and the registrant's
+  row updated to `Status: paid` in the Sheet automatically.
+- **`find_registrant()` now returns the *last* matching row**, not the
+  first, in case a phone still has old duplicate rows from before the fix
+  above (repeat test submissions that each appended instead of updating).
 - **`/webhook/nedarim` Content-Type**: a real callback (confirmed via the
   documented source IP) was being dropped with a 400 - Nedarim Plus sends
   the callback body as JSON without a `Content-Type` Flask recognizes as
@@ -202,25 +208,22 @@ Live on Render at `https://veahavta-app.onrender.com`, with `GOOGLE_SHEET_ID`,
 `GOOGLE_SERVICE_ACCOUNT_JSON_CONTENT`, `NEDARIM_MOSAD_ID`, and
 `NEDARIM_CALLBACK_URL` set as environment variables there.
 
-## Open items (blocking full wiring)
+## Open items
 
-1. **End-to-end real charge still not confirmed successful** - as of
-   2026-08-11, `ApiValid` is now correct and `FinishTransaction2` sends
-   the full documented field set (see "Resolved"), which should clear the
-   two errors seen so far ("סיסמת אימות לא תקינה", then "נא לציין שם פרטי
-   ומשפחה"). Still needs one real test charge (via `NEDARIM_TEST_AMOUNT=1`,
-   see `.env.example`) to confirm a card charge actually completes and
-   `/webhook/nedarim` receives a `Status: "OK"` callback that updates the
-   Sheet - `app.py` logs the full raw payload of every webhook hit to
-   confirm the exact success-case field names once that happens.
+1. **`NEDARIM_TEST_AMOUNT` is likely still set to `1` on Render** from
+   testing - remove it once real charges should go through at full price
+   (see `.env.example`).
 2. **`NEDARIM_CALLBACK_IP` (`18.194.219.73`) logged but not enforced** -
-   confirmed accurate against real callback hits; worth enforcing once
-   the success case above is also confirmed, to guard against spoofed
-   callbacks.
-3. **Monthly subscription (הוראת קבע) price + recurring parameter** - price
+   confirmed accurate against real callback hits; worth enforcing to
+   guard against spoofed callbacks.
+3. **Old duplicate registrant rows** - repeat test submissions before the
+   `numericise_ignore` fix (see "Resolved") each appended a new row
+   instead of updating one; the Sheet has several old rows per test phone
+   number that are safe to clean up manually whenever convenient.
+4. **Monthly subscription (הוראת קבע) price + recurring parameter** - price
    wasn't given in the client's brief; the docs show a `PaymentType: 'HK'`
    mode with its own `Amount`/`Tashlumim` meaning (monthly amount / number
    of months), which `build_iframe_transaction()` already switches to for
    the monthly tier - still disabled until the price is confirmed.
-4. **Exact class/session names** - the client sets these weekly from
+5. **Exact class/session names** - the client sets these weekly from
    `/admin` now; no code change needed once they start filling it in.
