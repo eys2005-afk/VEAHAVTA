@@ -92,12 +92,19 @@ def build_payment_url(phone, tier_key, tier=None):
 
 
 def build_iframe_transaction(phone, tier_key, name="", email="", tier=None):
-    """Config for the iframe's 'FinishTransaction2' postMessage, per Nedarim
-    Plus's official iframe integration guide (PDF supplied by the client) -
-    not a guess. Requires NEDARIM_API_VALID, a separate auth token that
-    must be requested from Nedarim Plus support (see README); the CallBack
-    mechanism itself is only documented for this iframe flow, not the plain
-    redirect form.
+    """Config for the iframe's 'FinishTransaction2' postMessage, matching
+    the official PostNedarim parameter table (client-supplied PDF,
+    2026-08-11) field-for-field - not a guess. Requires NEDARIM_API_VALID,
+    a separate auth token from Nedarim Plus support (see README); the
+    CallBack mechanism itself is only documented for this iframe flow, not
+    the plain redirect form.
+
+    The PDF states explicitly: "חובה לרשום את כל הפרמטרים, גם אם הם ריקים"
+    (every parameter in the table must be present, even empty) - omitting
+    unused ones (Zeout/Street/City/Groupe/Comment) is what was causing
+    Nedarim Plus to reject every transaction with a misleading "specify
+    first/last name" error, even though FirstName/LastName aren't actually
+    required per the table (only Mosad/ApiValid/Amount/Tashlumim are).
 
     `tier` - see build_payment_params."""
     tier = tier or TIERS.get(tier_key)
@@ -119,6 +126,7 @@ def build_iframe_transaction(phone, tier_key, name="", email="", tier=None):
     return {
         "Mosad": os.environ.get("NEDARIM_MOSAD_ID", ""),
         "ApiValid": os.environ.get("NEDARIM_API_VALID", ""),
+        "Zeout": "",
         "PaymentType": "HK" if tier["recurring"] else "Ragil",
         "Amount": test_charge_amount() or tier["amount"],
         "Tashlumim": (
@@ -129,8 +137,12 @@ def build_iframe_transaction(phone, tier_key, name="", email="", tier=None):
         "Currency": "1",
         "FirstName": first_name,
         "LastName": last_name,
+        "Street": "",
+        "City": "",
         "Phone": phone,
         "Mail": email,
+        "Groupe": "",
+        "Comment": "",
         "Param1": phone,
         "Param2": tier_key,
         "CallBack": os.environ.get("NEDARIM_CALLBACK_URL", ""),
