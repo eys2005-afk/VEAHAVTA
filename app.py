@@ -219,16 +219,23 @@ def pay():
     tier_config = tiers[tier]
     registrant = find_registrant(phone) or {}
 
-    # TEMPORARY diagnostic for the "סיסמת אימות לא תקינה" error from Nedarim
-    # Plus - confirms whether NEDARIM_API_VALID is actually being read (and
-    # under what length/shape) without logging the secret value itself.
-    _api_valid = os.environ.get("NEDARIM_API_VALID", "")
+    # TEMPORARY diagnostic: a live transaction was sent to Nedarim Plus with
+    # FirstName="" even though the registrant's real row in the Sheet has a
+    # full name - i.e. find_registrant(phone) is returning the wrong row (or
+    # no row) for a phone that's actually registered multiple times (repeat
+    # test submissions each created a new row instead of updating one, since
+    # find_registrant always matches the *first* row for a phone - possibly
+    # off by some row-counting issue if the sheet has any blank rows). This
+    # logs exactly what was matched so the real row-matching bug is visible
+    # instead of guessed at again.
     app.logger.warning(
-        "NEDARIM_API_VALID check: set=%s len=%d preview=%s… mosad=%s",
-        bool(_api_valid),
-        len(_api_valid),
-        (_api_valid[:2] + "..." + _api_valid[-2:]) if len(_api_valid) >= 4 else "(too short)",
-        os.environ.get("NEDARIM_MOSAD_ID", "(empty)"),
+        "find_registrant(%s): matched_row=%s name_present=%s name_len=%d status=%s tier=%s",
+        phone,
+        registrant.get("_row", "(no match)"),
+        bool(registrant.get("Name")),
+        len(registrant.get("Name") or ""),
+        registrant.get("Status", "(n/a)"),
+        registrant.get("Tier", "(n/a)"),
     )
 
     # Punch-card check-in: if they're still on the same tier they last paid

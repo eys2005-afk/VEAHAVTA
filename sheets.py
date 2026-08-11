@@ -161,17 +161,22 @@ def get_all_registrants():
 
 
 def find_registrant(phone):
-    """Return the registrant row (dict, with a `_row` sheet row number) or None."""
+    """Return the registrant row (dict, with a `_row` sheet row number) or
+    None. If a phone somehow has more than one row (e.g. repeat test
+    submissions that each ended up appending instead of updating), the
+    *last* (most recent) match wins - not the first/oldest one - so a
+    stale early row never shadows real, current data."""
     ws = _get_worksheet()
     records = ws.get_all_records()
+    match = None
     for i, raw_row in enumerate(records, start=2):  # row 1 is the header
         # Sheet headers are Hebrew (HEADER_LABELS); translate back to the
         # internal English keys the rest of the code uses.
         row = {_LABEL_TO_KEY.get(k, k): v for k, v in raw_row.items()}
         if str(row.get("Phone", "")).strip() == str(phone).strip():
             row["_row"] = i
-            return row
-    return None
+            match = row
+    return match
 
 
 def upsert_registrant(phone, **fields):
