@@ -157,6 +157,23 @@ collected during registration.
     {Status, Message, ...}}` (`Status == 'Error'` on failure).
   - `nedarim.py`'s `build_iframe_transaction()` and `templates/pay.html`
     now implement this documented protocol directly (not a guess).
+- **`NEDARIM_API_VALID`**: the value from the client's original email
+  (`da772`) turned out to be wrong/stale - the real, current value is
+  shown live on the Nedarim Plus back-office (reports.matara.pro) under
+  "מפתחות API" and does **not** match what was emailed. If auth ever
+  fails again ("סיסמת אימות לא תקינה"), check there first, not the email.
+- **`FinishTransaction2` payload shape**: the official PostNedarim table
+  (client-supplied PDF, `debitiframe2.pdf`) states every parameter in it
+  is mandatory to include, **even empty** ("חובה לרשום את כל הפרמטרים, גם
+  אם הם ריקים"). Omitting unused ones (`Zeout`/`Street`/`City`/`Groupe`/
+  `Comment`) made Nedarim Plus reject every transaction with a misleading
+  "נא לציין שם פרטי ומשפחה" error - `build_iframe_transaction()` now sends
+  the full 19-field set field-for-field, matching the table exactly.
+- **`/webhook/nedarim` Content-Type**: a real callback (confirmed via the
+  documented source IP) was being dropped with a 400 - Nedarim Plus sends
+  the callback body as JSON without a `Content-Type` Flask recognizes as
+  `application/json`, so `request.form`/`request.args`/plain `get_json()`
+  all came back empty. Fixed with `get_json(force=True)`.
 - **Google Sheet**: created (`ואהבת - נרשמים`), Hebrew header row added,
   shared with the `veahavta-sheets@veahavta-app.iam.gserviceaccount.com`
   service account, and confirmed working (real registrant rows have landed
@@ -171,20 +188,19 @@ Live on Render at `https://veahavta-app.onrender.com`, with `GOOGLE_SHEET_ID`,
 
 ## Open items (blocking full wiring)
 
-1. **iframe protocol implemented but not yet live-tested with `NEDARIM_API_VALID`
-   set** - built directly from Nedarim Plus's own documentation (not
-   reverse-engineered guesses); now that the client has the real
-   `ApiValid`, this needs to be verified in the browser with a real charge.
-2. **Webhook payload field names still partially unconfirmed** - `Status`,
-   `TransactionId` in `/webhook/nedarim` match a real working integration
-   we found (`Status == "OK"` on success), but haven't been confirmed
-   against this client's own account yet, since the previous test channel
-   (the plain redirect) doesn't support callbacks at all (see "Resolved").
-   `app.py` logs the full raw payload of every hit to help confirm this
-   once a real charge goes through the iframe. The docs also state Nedarim
-   Plus's callback always originates from IP `18.194.219.73` - logged
-   (`NEDARIM_CALLBACK_IP` in `app.py`) but not yet enforced; worth adding
-   once confirmed to guard against spoofed callbacks.
+1. **End-to-end real charge still not confirmed successful** - as of
+   2026-08-11, `ApiValid` is now correct and `FinishTransaction2` sends
+   the full documented field set (see "Resolved"), which should clear the
+   two errors seen so far ("סיסמת אימות לא תקינה", then "נא לציין שם פרטי
+   ומשפחה"). Still needs one real test charge (via `NEDARIM_TEST_AMOUNT=1`,
+   see `.env.example`) to confirm a card charge actually completes and
+   `/webhook/nedarim` receives a `Status: "OK"` callback that updates the
+   Sheet - `app.py` logs the full raw payload of every webhook hit to
+   confirm the exact success-case field names once that happens.
+2. **`NEDARIM_CALLBACK_IP` (`18.194.219.73`) logged but not enforced** -
+   confirmed accurate against real callback hits; worth enforcing once
+   the success case above is also confirmed, to guard against spoofed
+   callbacks.
 3. **Monthly subscription (הוראת קבע) price + recurring parameter** - price
    wasn't given in the client's brief; the docs show a `PaymentType: 'HK'`
    mode with its own `Amount`/`Tashlumim` meaning (monthly amount / number
