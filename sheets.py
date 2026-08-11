@@ -156,7 +156,7 @@ def get_all_registrants():
     ws = _get_worksheet()
     return [
         {_LABEL_TO_KEY.get(k, k): v for k, v in row.items()}
-        for row in ws.get_all_records()
+        for row in ws.get_all_records(numericise_ignore=["all"])
     ]
 
 
@@ -165,9 +165,20 @@ def find_registrant(phone):
     None. If a phone somehow has more than one row (e.g. repeat test
     submissions that each ended up appending instead of updating), the
     *last* (most recent) match wins - not the first/oldest one - so a
-    stale early row never shadows real, current data."""
+    stale early row never shadows real, current data.
+
+    numericise_ignore=["all"]: gspread's get_all_records() auto-converts
+    number-looking cell values to real Python int/float by default,
+    *regardless* of the cell's actual stored format - "0542236262" (a
+    phone number, stored as text) was silently becoming the int 542236262,
+    dropping the leading zero. The str(...) comparison below then never
+    matched a real phone (submitted with its leading zero) against
+    anything in the Sheet, no matter how many times a registrant re-
+    submitted - this, not name-splitting, was the actual reason every
+    /pay lookup came back empty and Nedarim Plus kept rejecting the
+    transaction for a "missing" name that was never actually missing."""
     ws = _get_worksheet()
-    records = ws.get_all_records()
+    records = ws.get_all_records(numericise_ignore=["all"])
     match = None
     for i, raw_row in enumerate(records, start=2):  # row 1 is the header
         # Sheet headers are Hebrew (HEADER_LABELS); translate back to the
