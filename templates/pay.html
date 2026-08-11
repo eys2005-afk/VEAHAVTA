@@ -24,23 +24,35 @@
     {% endif %}
     <p id="pay-loading" class="intro">טוען טופס תשלום מאובטח…</p>
     <p id="pay-error" class="error hidden"></p>
+    <p id="pay-success" class="intro hidden">✓ התשלום בוצע בהצלחה!</p>
     <iframe id="nedarim-frame" class="nedarim-frame" src="https://matara.pro/nedarimplus/iframe?language=he"></iframe>
+    <button type="submit" id="pay-submit" class="hidden" disabled>ביצוע תשלום</button>
   </main>
 
   <script>
-    // Implements Nedarim Plus's official iframe protocol (per their PDF
-    // integration guide), not a guess:
+    // Implements Nedarim Plus's official iframe protocol, confirmed against
+    // their own sample page (sample2.html) - NOT the earlier guess of
+    // sending FinishTransaction2 automatically on iframe load:
     //   1. iframe loads -> we ask it for its height ({Name: 'GetHeight'}).
-    //   2. it replies {Name: 'Height', Value: <px>} -> we resize the iframe.
-    //   3. we send the transaction details ({Name: 'FinishTransaction2',
-    //      Value: {...}}) so the iframe can show its own card form and
-    //      complete the charge.
+    //   2. it replies {Name: 'Height', Value: <px>} -> we resize the iframe
+    //      and reveal our own "ביצוע תשלום" button (outside the iframe,
+    //      matching their sample layout - the card fields are inside the
+    //      iframe, but the submit button is on the host page).
+    //   3. only once the visitor fills in their card and clicks that
+    //      button do we send the transaction details ({Name:
+    //      'FinishTransaction2', Value: {...}}). Sending this immediately
+    //      on load (the previous approach) meant Nedarim Plus received a
+    //      transaction request before any card details existed in the
+    //      iframe's own state, which is almost certainly why every attempt
+    //      was rejected regardless of what was in the payload.
     //   4. it replies {Name: 'TransactionResponse', Value: {Status, ...}}.
     // Messages are sent as raw objects via postMessage (NOT JSON.stringify),
     // matching Nedarim Plus's own sample code.
     const frame = document.getElementById('nedarim-frame');
     const loadingBox = document.getElementById('pay-loading');
     const errorBox = document.getElementById('pay-error');
+    const successBox = document.getElementById('pay-success');
+    const submitBtn = document.getElementById('pay-submit');
     const transaction = {{ transaction | tojson }};
     let formReady = false;
 
@@ -50,6 +62,12 @@
 
     frame.addEventListener('load', function () {
       postToNedarim({ Name: 'GetHeight' });
+    });
+
+    submitBtn.addEventListener('click', function () {
+      errorBox.classList.add('hidden');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'מעבד תשלום…';
       postToNedarim({ Name: 'FinishTransaction2', Value: transaction });
     });
 
@@ -63,16 +81,23 @@
         formReady = true;
         loadingBox.classList.add('hidden');
         frame.style.height = (parseInt(message.Value, 10) + 15) + 'px';
+        submitBtn.classList.remove('hidden');
+        submitBtn.disabled = false;
       } else if (message.Name === 'TransactionResponse') {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'ביצוע תשלום';
         if (message.Value && message.Value.Status === 'Error') {
           errorBox.textContent = message.Value.Message || 'שגיאה בתשלום, נסו שוב';
           errorBox.classList.remove('hidden');
+        } else {
+          submitBtn.classList.add('hidden');
+          successBox.classList.remove('hidden');
         }
       }
     });
 
-    // The iframe form itself renders Nedarim Plus's card fields + charge
-    // button once it accepts FinishTransaction2 - if that handshake never
+    // The iframe form itself needs to load and report its height before
+    // the "ביצוע תשלום" button can appear - if that handshake never
     // completes (e.g. a misconfigured/missing NEDARIM_API_VALID), the user
     // would otherwise just see a blank area with no explanation.
     setTimeout(function () {
