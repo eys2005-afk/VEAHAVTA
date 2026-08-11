@@ -168,10 +168,12 @@ def details():
     email = request.form.get("email")
     marital_status = request.form.get("marital_status")
 
-    # Nedarim Plus's payment form requires a separate first + last name
-    # (see build_iframe_transaction) - a single-word "name" leaves LastName
-    # empty and the iframe silently blocks payment with "נא לציין שם פרטי
-    # ומשפחה", so this must be caught here instead of surfacing there.
+    # A plain data-quality check (real registrant records) - NOT a Nedarim
+    # Plus requirement. Their own reference implementation (sample2.html)
+    # sends the whole name as FirstName and always leaves LastName empty,
+    # so splitting a single-word name was never actually the cause of the
+    # "נא לציין שם פרטי ומשפחה" rejection some registrations ran into (see
+    # build_iframe_transaction) - just a coincidentally-matching error text.
     has_full_name = name and len(name.split()) >= 2
 
     if not phone or not tier or not name or not email or not marital_status or not has_full_name:

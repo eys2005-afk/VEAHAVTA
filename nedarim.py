@@ -93,35 +93,23 @@ def build_payment_url(phone, tier_key, tier=None):
 
 def build_iframe_transaction(phone, tier_key, name="", email="", tier=None):
     """Config for the iframe's 'FinishTransaction2' postMessage, matching
-    the official PostNedarim parameter table (client-supplied PDF,
-    2026-08-11) field-for-field - not a guess. Requires NEDARIM_API_VALID,
-    a separate auth token from Nedarim Plus support (see README); the
-    CallBack mechanism itself is only documented for this iframe flow, not
-    the plain redirect form.
+    Nedarim Plus's own reference implementation (sample2.html, view-sourced
+    directly from https://www.matara.pro/nedarimplus/iframe/sample2.html
+    on 2026-08-11) field-for-field - not a guess, not the general PDF
+    table's field list alone.
 
-    The PDF states explicitly: "חובה לרשום את כל הפרמטרים, גם אם הם ריקים"
-    (every parameter in the table must be present, even empty) - omitting
-    unused ones (Zeout/Street/City/Groupe/Comment) is what was causing
-    Nedarim Plus to reject every transaction with a misleading "specify
-    first/last name" error, even though FirstName/LastName aren't actually
-    required per the table (only Mosad/ApiValid/Amount/Tashlumim are).
+    Their sample's PayBtClick() puts the *entire* name into FirstName and
+    always sends LastName as ''. Splitting the name into separate
+    First/Last values (matching the PDF table's field descriptions) is
+    what was causing Nedarim Plus to reject every transaction with "נא
+    לציין שם פרטי ומשפחה", every single time, regardless of ApiValid,
+    real card details, or a real button click - none of which were
+    actually the problem. Matching their sample exactly instead.
 
     `tier` - see build_payment_params."""
     tier = tier or TIERS.get(tier_key)
     if not tier or not tier.get("enabled"):
         raise ValueError(f"Unknown or disabled tier: {tier_key}")
-
-    # Split on the *last* space so a multi-word first name (e.g. "בן דוד
-    # כהן") still gets a real surname, not just the last of three words
-    # attached to nothing. app.py's /details already requires at least two
-    # words before it ever reaches here, but this stays defensive in case
-    # a registrant's name was saved some other way (e.g. directly in the
-    # Sheet by the client).
-    name_parts = (name or "").split()
-    if len(name_parts) >= 2:
-        first_name, last_name = " ".join(name_parts[:-1]), name_parts[-1]
-    else:
-        first_name, last_name = (name_parts[0] if name_parts else ""), ""
 
     return {
         "Mosad": os.environ.get("NEDARIM_MOSAD_ID", ""),
@@ -135,8 +123,8 @@ def build_iframe_transaction(phone, tier_key, name="", email="", tier=None):
             else "1"
         ),
         "Currency": "1",
-        "FirstName": first_name,
-        "LastName": last_name,
+        "FirstName": name or "",
+        "LastName": "",
         "Street": "",
         "City": "",
         "Phone": phone,
