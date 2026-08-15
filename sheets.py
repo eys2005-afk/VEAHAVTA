@@ -160,6 +160,17 @@ def get_all_registrants():
     ]
 
 
+def _normalize_phone(phone):
+    """Digits only - so '058-740-1791' and '0587401791' are treated as the
+    *same* registrant instead of two unrelated ones. A real case: one
+    registrant ended up with two rows, one from each format, and only the
+    one matching whatever format a given request happened to use ever got
+    updated (e.g. a payment webhook updating a row the visitor's original
+    registration never touched). Applied only for comparisons/storage -
+    never changes what a route receives from the visitor."""
+    return "".join(ch for ch in str(phone) if ch.isdigit())
+
+
 def find_registrant(phone):
     """Return the registrant row (dict, with a `_row` sheet row number) or
     None. If a phone somehow has more than one row (e.g. repeat test
@@ -179,12 +190,13 @@ def find_registrant(phone):
     transaction for a "missing" name that was never actually missing."""
     ws = _get_worksheet()
     records = ws.get_all_records(numericise_ignore=["all"])
+    target = _normalize_phone(phone)
     match = None
     for i, raw_row in enumerate(records, start=2):  # row 1 is the header
         # Sheet headers are Hebrew (HEADER_LABELS); translate back to the
         # internal English keys the rest of the code uses.
         row = {_LABEL_TO_KEY.get(k, k): v for k, v in raw_row.items()}
-        if str(row.get("Phone", "")).strip() == str(phone).strip():
+        if _normalize_phone(row.get("Phone", "")) == target and target:
             row["_row"] = i
             match = row
     return match
@@ -192,8 +204,11 @@ def find_registrant(phone):
 
 def upsert_registrant(phone, **fields):
     """Create or update a registrant, merging fields so a webhook update
-    can't blank out data collected earlier in the registration flow."""
+    can't blank out data collected earlier in the registration flow.
+    Stores the phone digits-only (see _normalize_phone) so future lookups
+    stay consistent regardless of how it was originally typed/formatted."""
     ws = _get_worksheet()
+    phone = _normalize_phone(phone)
     existing = find_registrant(phone)
     now = datetime.now(timezone.utc).isoformat()
 

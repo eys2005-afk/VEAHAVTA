@@ -76,8 +76,6 @@ See `.env.example`. In short:
 - `NEDARIM_CALLBACK_MAIL_ERROR` - optional email Nedarim Plus notifies if
   sending the callback fails; if empty, they email the institution's
   contacts instead.
-- `NEDARIM_MONTHLY_RECURRING_PARAM` - recurring-payment (הוראת קבע) param;
-  the monthly tier stays disabled in `nedarim.py` until this is confirmed.
 - `CLASS_NAME_SUNDAY` .. `CLASS_NAME_SATURDAY` - fallback per-day class name
   if the Sheet-based schedule (edited from `/admin`) is unreachable; then
   `CLASS_NAME`, then a placeholder.
@@ -92,10 +90,11 @@ automatically to the same Google Sheet (`sheets.py`'s `get_site_settings`/
 request, falling back to the plain static tiers if the sheet is unreachable:
 
 - **Weekly class schedule** - one text field per day of the week.
-- **Free mode** - a checkbox that zeroes every enabled tier's price (e.g.
-  for an Elul opening-month promo). Visitors still go through the normal
-  scan/phone flow, but `/pay` skips Nedarim Plus entirely and shows "הפעם
-  זה חינם" instead, so they still register and see the app normally.
+- **Free mode** - a checkbox for e.g. an opening-month promo. The
+  *displayed* price stays real (visitors still see what it normally
+  costs); only checkout itself is free - `/pay` skips Nedarim Plus
+  entirely and shows "🎉 חודש פתיחה חינם!" instead, so they still
+  register and see the app normally, just without a real charge.
 - **Temporary workshop tier** - name + price + on/off, shown as an extra
   button on the same fixed homepage/QR link (no new link needed per event).
 - **Registrants** - a read-only table of everyone who's registered, plus a
@@ -107,7 +106,7 @@ request, falling back to the plain static tiers if the sheet is unreachable:
 |--------------|-------------|-----------------------------------------------|
 | Single       | ₪30/evening |                                                |
 | Punch card   | ₪75/3 entries | Replaces the old time-based "weekly" tier - see "Multi-visit tracking" below |
-| Monthly      | TBD         | Disabled until price + recurring param confirmed |
+| Monthly      | ₪150/month (הוראת קבע) | Confirmed 2026-08-11, enabled |
 
 ### Multi-visit tracking (punch cards)
 
