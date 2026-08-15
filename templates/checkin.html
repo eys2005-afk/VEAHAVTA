@@ -19,7 +19,11 @@
     <p class="intro">{{ tier_label }}</p>
 
     {% if free %}
-    <p class="intro">הפעם זה חינם - תיהנו!</p>
+      {% if opening_promo %}
+      <p class="intro">🎉 חודש פתיחה חינם! (המחיר הרגיל ₪{{ real_amount }})</p>
+      {% else %}
+      <p class="intro">הפעם זה חינם - תיהנו!</p>
+      {% endif %}
     {% else %}
     <p class="intro">נשארו לך {{ entries_remaining }} כניסות</p>
     {% endif %}

@@ -62,21 +62,20 @@ def get_class_name():
 
 def get_active_tiers():
     """The tiers shown on the site right now: the static TIERS, plus
-    /admin's two toggles - free-mode (zeroes every enabled tier's price)
-    and a temporary workshop tier - both editable by the client without a
-    redeploy. Falls back to the plain static tiers if the sheet is
-    unreachable, so a transient Sheets error can't break checkout."""
+    /admin's temporary workshop tier toggle - editable by the client
+    without a redeploy. Falls back to the plain static tiers if the sheet
+    is unreachable, so a transient Sheets error can't break checkout.
+
+    Free-mode (see get_site_settings) is deliberately *not* applied here -
+    it no longer changes what's displayed. It only changes what happens at
+    checkout (see /pay), so a promo like an opening month stays free in
+    practice while visitors still see the real price."""
     tiers = {key: dict(value) for key, value in TIERS.items()}
 
     try:
         settings = get_site_settings()
     except Exception:
         return tiers
-
-    if settings["free_mode"]:
-        for tier in tiers.values():
-            if tier["enabled"]:
-                tier["amount"] = 0
 
     if settings["workshop_enabled"] and settings["workshop_name"] and settings["workshop_amount"] is not None:
         tiers["workshop"] = {
@@ -235,11 +234,25 @@ def pay():
                 free=False,
             )
 
-    # Free-mode (e.g. an opening-month promo): register them directly,
-    # skip Nedarim Plus entirely - there's nothing to charge.
-    if tier_config["amount"] == 0:
+    # Free-mode (e.g. an opening-month promo, toggled from /admin): the
+    # *displayed* price stays real (see get_active_tiers) so visitors still
+    # know what it normally costs, but checkout itself is skipped - no
+    # charge, register them directly. A tier priced at literally ₪0 (e.g. a
+    # free workshop) skips the same way regardless of free-mode.
+    try:
+        free_mode_active = bool(get_site_settings().get("free_mode"))
+    except Exception:
+        free_mode_active = False
+
+    if tier_config["amount"] == 0 or free_mode_active:
         upsert_registrant(phone, Tier=tier, Status="free", Amount=0)
-        return render_template("checkin.html", tier_label=tier_config["label"], free=True)
+        return render_template(
+            "checkin.html",
+            tier_label=tier_config["label"],
+            free=True,
+            opening_promo=free_mode_active and tier_config["amount"] > 0,
+            real_amount=tier_config["amount"],
+        )
 
     return render_template(
         "pay.html",

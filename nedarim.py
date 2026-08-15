@@ -1,8 +1,8 @@
 import os
 from urllib.parse import urlencode
 
-# Prices per the client (single=30/evening, punch card=75/3 entries).
-# Monthly amount is still unconfirmed (see README "Open items").
+# Prices per the client (single=30/evening, punch card=75/3 entries,
+# monthly=150/month confirmed 2026-08-11).
 # "entries": N marks a tier as a multi-visit punch card - paying for it sets
 # EntriesRemaining=N on the registrant; returning with entries left checks
 # them in (decrementing the count) instead of charging again (see app.py).
@@ -23,10 +23,9 @@ TIERS = {
     },
     "monthly": {
         "label": "מנוי חודשי (הוראת קבע)",
-        "amount": 150,  # TODO: confirm real monthly price with the client.
+        "amount": 150,
         "recurring": True,
-        # Disabled until Nedarim Plus's recurring-payment param is confirmed.
-        "enabled": False,
+        "enabled": True,
         "entries": None,
     },
 }
@@ -78,9 +77,11 @@ def build_payment_params(phone, tier_key, tier=None):
     }
 
     if tier["recurring"]:
-        # TODO: confirm the real param name/value for monthly recurring
-        # (הוראת קבע) payments with Nedarim Plus support.
-        params["Tashlumim"] = os.environ.get("NEDARIM_MONTHLY_RECURRING_PARAM", "")
+        # Per the official PostNedarim parameter table: for PaymentType=HK,
+        # Tashlumim is "מספר חודשים לחיוב (ללא הגבלה יש להשאיר ריק)" - number
+        # of months to charge, leave empty for unlimited. An ongoing monthly
+        # subscription (charged until cancelled) is exactly "unlimited".
+        params["Tashlumim"] = ""
 
     return params
 
@@ -117,11 +118,9 @@ def build_iframe_transaction(phone, tier_key, name="", email="", tier=None):
         "Zeout": "",
         "PaymentType": "HK" if tier["recurring"] else "Ragil",
         "Amount": test_charge_amount() or tier["amount"],
-        "Tashlumim": (
-            os.environ.get("NEDARIM_MONTHLY_RECURRING_PARAM", "")
-            if tier["recurring"]
-            else "1"
-        ),
+        # See build_payment_params: empty Tashlumim on PaymentType=HK means
+        # unlimited months (charged every month until cancelled).
+        "Tashlumim": "" if tier["recurring"] else "1",
         "Currency": "1",
         "FirstName": name or "",
         "LastName": "",
