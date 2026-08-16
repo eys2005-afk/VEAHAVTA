@@ -177,10 +177,12 @@ body {
 
 .tier-amount-struck {
   text-decoration: line-through;
-  opacity: 0.7;
-  font-size: 0.8em;
+  text-decoration-thickness: 2px;
+  text-decoration-color: var(--gold);
+  opacity: 0.95;
+  font-size: 1em;
   font-weight: normal;
-  color: inherit;
+  color: white;
 }
 
 .tier-free-badge {
