@@ -20,6 +20,10 @@
     <p class="class-name">{{ class_name }}</p>
     <p class="intro">בחרו את המסלול המתאים לכם והשלימו רישום קצר</p>
 
+    {% if free_mode %}
+    <p class="promo-banner">🎉 חודש פתיחה - ההרשמה החודש בחינם!</p>
+    {% endif %}
+
     <div class="tiers">
       {% for key, tier in tiers.items() %}
       <button
@@ -28,7 +32,14 @@
         {% if not tier.enabled %}disabled{% endif %}
       >
         <span class="tier-label">{{ tier.label }}</span>
+        {% if free_mode and tier.amount > 0 %}
+        <span class="tier-amount tier-amount-free">
+          <span class="tier-amount-struck">₪{{ tier.amount }}</span>
+          <span class="tier-free-badge">חינם!</span>
+        </span>
+        {% else %}
         <span class="tier-amount">₪{{ tier.amount }}</span>
+        {% endif %}
       </button>
       {% endfor %}
     </div>

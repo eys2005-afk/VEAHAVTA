@@ -117,7 +117,16 @@ def admin_required(view):
 
 @app.route("/")
 def index():
-    return render_template("index.html", tiers=get_active_tiers(), class_name=get_class_name())
+    try:
+        free_mode_active = bool(get_site_settings().get("free_mode"))
+    except Exception:
+        free_mode_active = False
+    return render_template(
+        "index.html",
+        tiers=get_active_tiers(),
+        class_name=get_class_name(),
+        free_mode=free_mode_active,
+    )
 
 
 @app.route("/check-phone", methods=["POST"])
