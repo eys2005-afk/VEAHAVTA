@@ -142,9 +142,13 @@ def check_phone():
         return jsonify({"error": "invalid or disabled tier"}), 400
 
     registrant = find_registrant(phone)
-    if registrant:
-        # Already registered - skip straight to payment, with a "welcome
-        # back" greeting there instead of the new-registrant details form.
+    if registrant and registrant.get("Name"):
+        # Already registered *with a name on file* - skip straight to
+        # payment, with a "welcome back" greeting there instead of the
+        # new-registrant details form. A row that exists but has no name
+        # (e.g. a free-mode registration that only ever collected a phone
+        # number) still needs to go through /details - otherwise nobody
+        # knows who actually signed up.
         return jsonify(
             {"known": True, "redirect": url_for("pay", phone=phone, tier=tier, returning=1)}
         )
