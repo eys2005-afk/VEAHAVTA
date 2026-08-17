@@ -219,19 +219,30 @@ def upsert_registrant(phone, **fields):
     """Create or update a registrant, merging fields so a webhook update
     can't blank out data collected earlier in the registration flow.
     Stores the phone digits-only (see _normalize_phone) so future lookups
-    stay consistent regardless of how it was originally typed/formatted."""
+    stay consistent regardless of how it was originally typed/formatted.
+
+    Writes are ordered by the Sheet's *actual* header row (whatever order
+    the client's columns are really in), not by HEADERS' fixed order - a
+    real header row ended up with "כניסות נותרו"/"מזהה עסקה" swapped
+    relative to HEADERS after a manual edit, which would have silently
+    written each value into the other one's column. Reads (get_all_records)
+    were always header-text-based and unaffected by column order; writes
+    now match that so column order can never cause this again."""
     ws = _get_worksheet()
     phone = _normalize_phone(phone)
     existing = find_registrant(phone)
     now = _now_str()
+
+    actual_headers = ws.row_values(1)
+    col_fields = [_LABEL_TO_KEY.get(h, h) for h in actual_headers]
 
     if existing:
         row_number = existing.pop("_row")
         merged = {**existing, **fields}
         merged["Phone"] = phone
         merged["UpdatedAt"] = now
-        values = [merged.get(h, "") for h in HEADERS]
-        end_cell = rowcol_to_a1(row_number, len(HEADERS))
+        values = [merged.get(field, "") for field in col_fields]
+        end_cell = rowcol_to_a1(row_number, len(col_fields))
         ws.update(range_name=f"A{row_number}:{end_cell}", values=[values])
         return merged
 
@@ -240,7 +251,7 @@ def upsert_registrant(phone, **fields):
     merged["Phone"] = phone
     merged["CreatedAt"] = now
     merged["UpdatedAt"] = now
-    values = [merged.get(h, "") for h in HEADERS]
+    values = [merged.get(field, "") for field in col_fields]
     ws.append_row(values)
     return merged
 
@@ -254,8 +265,10 @@ def migrate_old_timestamps():
     alone. Returns the number of cells changed."""
     ws = _get_worksheet()
     records = ws.get_all_records(numericise_ignore=["all"])
-    col_created = HEADERS.index("CreatedAt") + 1
-    col_updated = HEADERS.index("UpdatedAt") + 1
+    actual_headers = ws.row_values(1)
+    col_fields = [_LABEL_TO_KEY.get(h, h) for h in actual_headers]
+    col_created = col_fields.index("CreatedAt") + 1
+    col_updated = col_fields.index("UpdatedAt") + 1
     batch = []
 
     for i, raw_row in enumerate(records, start=2):  # row 1 is the header
