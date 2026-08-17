@@ -16,6 +16,7 @@ from sheets import (
     get_site_settings,
     get_weekly_schedule,
     migrate_old_timestamps,
+    migrate_orphan_column,
     update_settings,
     upsert_registrant,
 )
@@ -381,6 +382,21 @@ def admin_migrate_timestamps():
     return redirect(url_for("admin_dashboard", migrated=count if count is not None else "error"))
 
 
+@app.route("/admin/migrate-orphan-column", methods=["POST"])
+@admin_required
+def admin_migrate_orphan_column():
+    """One-time (but safe to re-run) cleanup button: copies UpdatedAt
+    values stuck in a stray, unlabeled column past the last real header
+    into the actual "עודכן בתאריך" column wherever it's currently empty.
+    Never overwrites an existing UpdatedAt value or deletes anything from
+    the stray column."""
+    try:
+        count = migrate_orphan_column()
+    except Exception:
+        count = None
+    return redirect(url_for("admin_dashboard", orphan_migrated=count if count is not None else "error"))
+
+
 @app.route("/admin", methods=["GET", "POST"])
 @admin_required
 def admin_dashboard():
@@ -411,6 +427,7 @@ def admin_dashboard():
         registrants=get_all_registrants(),
         sheet_url=f"https://docs.google.com/spreadsheets/d/{os.environ.get('GOOGLE_SHEET_ID', '')}/edit",
         migrated=request.args.get("migrated"),
+        orphan_migrated=request.args.get("orphan_migrated"),
     )
 
 

@@ -78,6 +78,19 @@
     </section>
 
     <section class="admin-section">
+      <h3>איחוד עמודה יתומה</h3>
+      <p class="intro">משלים ערכי "עודכן בתאריך" שנתקעו בעמודה ישנה וללא שם, בשורות בודדות מהתקופה הראשונה - רק היכן שהעמודה הנכונה ריקה. לא דורס ולא מוחק כלום. בטוח להריץ יותר מפעם אחת.</p>
+      {% if orphan_migrated == "error" %}
+      <p class="error">משהו השתבש, נסו שוב.</p>
+      {% elif orphan_migrated is not none %}
+      <p class="intro">✓ עודכנו {{ orphan_migrated }} תאים.</p>
+      {% endif %}
+      <form method="POST" action="{{ url_for('admin_migrate_orphan_column') }}">
+        <button type="submit">איחוד עמודה יתומה</button>
+      </form>
+    </section>
+
+    <section class="admin-section">
       <h3>נרשמים</h3>
       <p class="intro">
         <a href="{{ sheet_url }}" target="_blank" rel="noopener">לפתיחת הגיליון המלא בגוגל שיטס</a>

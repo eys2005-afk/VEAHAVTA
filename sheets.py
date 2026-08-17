@@ -287,3 +287,42 @@ def migrate_old_timestamps():
     if batch:
         ws.batch_update(batch)
     return len(batch)
+
+
+def migrate_orphan_column():
+    """One-time cleanup, triggered from /admin: a handful of early rows
+    have their UpdatedAt value sitting in a stray, unlabeled column past
+    the last real header - not in the actual "עודכן בתאריך" (UpdatedAt)
+    column itself, where nothing in the app (or a client export) would
+    ever find it. Copies the stuck value into UpdatedAt wherever UpdatedAt
+    is empty; never overwrites an existing UpdatedAt value, and never
+    clears/deletes the stray column - it's left exactly as-is. Safe to run
+    more than once (rows already fixed just get skipped). Returns the
+    number of cells changed."""
+    ws = _get_worksheet()
+    all_values = ws.get_all_values()
+    if not all_values:
+        return 0
+    header = all_values[0]
+
+    # The stray column is an extra one past the last recognized header,
+    # with no header text of its own.
+    if len(header) <= len(HEADERS) or header[-1].strip() != "":
+        return 0
+    orphan_col = len(header)
+
+    col_fields = [_LABEL_TO_KEY.get(h, h) for h in header]
+    if "UpdatedAt" not in col_fields:
+        return 0
+    updated_col = col_fields.index("UpdatedAt") + 1
+
+    batch = []
+    for i, row in enumerate(all_values[1:], start=2):  # row 1 is the header
+        updated_value = row[updated_col - 1].strip() if len(row) >= updated_col else ""
+        orphan_value = row[orphan_col - 1].strip() if len(row) >= orphan_col else ""
+        if orphan_value and not updated_value:
+            batch.append({"range": rowcol_to_a1(i, updated_col), "values": [[orphan_value]]})
+
+    if batch:
+        ws.batch_update(batch)
+    return len(batch)
