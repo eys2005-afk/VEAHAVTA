@@ -4,3 +4,4 @@ python-dotenv==1.0.1
 gunicorn==22.0.0
 gspread==6.1.2
 google-auth==2.32.0
+tzdata==2025.2

@@ -1,12 +1,25 @@
 import json
 import os
-from datetime import datetime, timezone
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import gspread
 from google.oauth2.service_account import Credentials
 from gspread.utils import rowcol_to_a1
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+
+ISRAEL_TZ = ZoneInfo("Asia/Jerusalem")
+
+
+def _now_str():
+    """A CreatedAt/UpdatedAt timestamp the client can actually read at a
+    glance in the Sheet or /admin - '11/08/2026 15:18', Israel local time
+    (handles the DST switch automatically) - instead of the previous raw
+    ISO-8601 UTC string with microseconds
+    ('2026-08-11T12:18:51.665881+00:00'), which was accurate but not
+    something a human wants to parse."""
+    return datetime.now(ISRAEL_TZ).strftime("%d/%m/%Y %H:%M")
 
 HEADERS = [
     "Phone",
@@ -210,7 +223,7 @@ def upsert_registrant(phone, **fields):
     ws = _get_worksheet()
     phone = _normalize_phone(phone)
     existing = find_registrant(phone)
-    now = datetime.now(timezone.utc).isoformat()
+    now = _now_str()
 
     if existing:
         row_number = existing.pop("_row")
