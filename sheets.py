@@ -243,3 +243,34 @@ def upsert_registrant(phone, **fields):
     values = [merged.get(h, "") for h in HEADERS]
     ws.append_row(values)
     return merged
+
+
+def migrate_old_timestamps():
+    """One-time cleanup, triggered from /admin: convert any CreatedAt/
+    UpdatedAt cell still in the old raw ISO-8601 format
+    ('2026-08-11T12:18:51.665881+00:00') to the new human-readable one
+    (_now_str's '11/08/2026 15:18'). Safe to run more than once - a cell
+    already in the new format (or empty) has no 'T' in it and is left
+    alone. Returns the number of cells changed."""
+    ws = _get_worksheet()
+    records = ws.get_all_records(numericise_ignore=["all"])
+    col_created = HEADERS.index("CreatedAt") + 1
+    col_updated = HEADERS.index("UpdatedAt") + 1
+    batch = []
+
+    for i, raw_row in enumerate(records, start=2):  # row 1 is the header
+        row = {_LABEL_TO_KEY.get(k, k): v for k, v in raw_row.items()}
+        for field, col in (("CreatedAt", col_created), ("UpdatedAt", col_updated)):
+            value = str(row.get(field, "") or "")
+            if "T" not in value:
+                continue
+            try:
+                dt = datetime.fromisoformat(value)
+            except ValueError:
+                continue
+            new_value = dt.astimezone(ISRAEL_TZ).strftime("%d/%m/%Y %H:%M")
+            batch.append({"range": rowcol_to_a1(i, col), "values": [[new_value]]})
+
+    if batch:
+        ws.batch_update(batch)
+    return len(batch)

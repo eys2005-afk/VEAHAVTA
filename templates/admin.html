@@ -65,6 +65,19 @@
     </form>
 
     <section class="admin-section">
+      <h3>ניקוי תאריכים ישנים</h3>
+      <p class="intro">ממיר שורות ישנות בגיליון לפורמט התאריך/שעה הקריא החדש. בטוח להריץ יותר מפעם אחת.</p>
+      {% if migrated == "error" %}
+      <p class="error">משהו השתבש, נסו שוב.</p>
+      {% elif migrated is not none %}
+      <p class="intro">✓ עודכנו {{ migrated }} תאים.</p>
+      {% endif %}
+      <form method="POST" action="{{ url_for('admin_migrate_timestamps') }}">
+        <button type="submit">המרת תאריכים ישנים</button>
+      </form>
+    </section>
+
+    <section class="admin-section">
       <h3>נרשמים</h3>
       <p class="intro">
         <a href="{{ sheet_url }}" target="_blank" rel="noopener">לפתיחת הגיליון המלא בגוגל שיטס</a>
