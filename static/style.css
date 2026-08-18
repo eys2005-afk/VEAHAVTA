@@ -361,9 +361,3 @@ button[type="submit"]:hover {
   color: white;
 }
 
-.site-footer {
-  text-align: center;
-  font-size: 0.75rem;
-  color: #999;
-  padding: 24px 16px;
-}
