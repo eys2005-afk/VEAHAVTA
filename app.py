@@ -4,7 +4,7 @@ from datetime import date
 from functools import wraps
 
 from dotenv import load_dotenv
-from flask import Flask, jsonify, redirect, render_template, request, session, url_for
+from flask import Flask, Response, jsonify, redirect, render_template, request, session, url_for
 from flask_cors import CORS
 
 from nedarim import TIERS, build_iframe_transaction, build_payment_url, test_charge_amount
@@ -477,6 +477,35 @@ def admin_dashboard():
         registrants=get_all_registrants(),
         sheet_url=f"https://docs.google.com/spreadsheets/d/{os.environ.get('GOOGLE_SHEET_ID', '')}/edit",
     )
+
+
+@app.route("/robots.txt")
+def robots_txt():
+    # Served dynamically (not as a static file) so the sitemap line always
+    # points at whatever host the site is actually reached on - the Render
+    # URL today, veahavta.co.il once the custom domain is live - with no
+    # hardcoded domain to update. /admin is disallowed so the private admin
+    # panel never lands in search results.
+    sitemap_url = url_for("sitemap_xml", _external=True)
+    body = "User-agent: *\nAllow: /\nDisallow: /admin\n\nSitemap: " + sitemap_url + "\n"
+    return Response(body, mimetype="text/plain")
+
+
+@app.route("/sitemap.xml")
+def sitemap_xml():
+    # Only the two public pages belong in the sitemap: the community
+    # homepage and the registration entry point. Everything else is either
+    # private (/admin) or a mid-flow step reached only from within the app
+    # (/details, /pay, /webhook/...), which shouldn't be indexed on its own.
+    pages = [url_for("index", _external=True), url_for("register", _external=True)]
+    urls = "".join(f"  <url><loc>{p}</loc></url>\n" for p in pages)
+    body = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        f"{urls}"
+        "</urlset>\n"
+    )
+    return Response(body, mimetype="application/xml")
 
 
 @app.route("/api/health")
