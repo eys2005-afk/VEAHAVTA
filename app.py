@@ -479,6 +479,20 @@ def admin_dashboard():
     )
 
 
+@app.route("/googleb68dc3903a36fa58.html")
+def google_site_verification():
+    # Google Search Console's HTML-file verification for the
+    # www.vehaavta.co.il property: Google fetches this exact path and checks
+    # the body is the single line below. Served as a route (not a static
+    # file) to keep it alongside the other SEO endpoints and version-
+    # controlled. If the property is ever re-verified with a new token,
+    # replace both the path and the body with Google's new file.
+    return Response(
+        "google-site-verification: googleb68dc3903a36fa58.html",
+        mimetype="text/html",
+    )
+
+
 @app.route("/robots.txt")
 def robots_txt():
     # Served dynamically (not as a static file) so the sitemap line always
