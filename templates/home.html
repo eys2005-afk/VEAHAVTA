@@ -237,8 +237,27 @@
           <div class="title-nikud" aria-hidden="true"><span class="tn-dot"></span><svg viewBox="0 0 40 34"><rect x="2" y="2" width="36" height="9" rx="4.5"/><path d="M15 11h10v10a5 5 0 0 1-10 0z"/></svg><span class="tn-dot"></span></div>
           <p class="section-sub">המערכת השבועית הקבועה שלנו — ראשון, שלישי וחמישי, עם קפה פתוח בכל ערב.</p>
         </div>
-        <div class="board-grid" id="boardGrid" aria-live="polite">
-          <!-- נטען אוטומטית מתוך js/main.js — שם מעדכנים את המערכת השבועית -->
+        <div class="board-grid" id="boardGrid">
+          {# הלוח נערך מ-/admin (נשמר בגוגל שיטס); אם הכל ריק או שהשיטס
+             לא זמין - מוצג לוח ברירת המחדל (DEFAULT_BOARD_TEXT ב-app.py) #}
+          {% for day in board_days %}
+          <article class="day-card reveal" style="animation-delay: {{ (loop.index0 % 3) * 0.12 }}s">
+            <h3 class="day-card-title">{{ day.day }}</h3>
+            <div class="day-card-list">
+              {% for item in day['items'] %}
+              <div class="day-row">
+                <span class="day-time">{{ item.time }}</span>
+                <div class="day-row-body">
+                  <strong>{{ item.title }}</strong>
+                  {% if item.desc %}<span class="day-desc">{{ item.desc }}</span>{% endif %}
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </article>
+          {% else %}
+          <p class="board-note">הלוח מתחדש ממש בקרוב — שווה לחזור לבדוק 🙂</p>
+          {% endfor %}
         </div>
         <p class="board-note reveal">בואו לבקר — מקסימום סתם נשב על קפה.</p>
         <div class="coffee-doodle reveal delay-1" aria-hidden="true">

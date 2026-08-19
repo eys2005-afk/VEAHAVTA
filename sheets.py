@@ -72,7 +72,14 @@ EXTRA_SETTINGS_LABELS = [
     WORKSHOP_AMOUNT_LABEL,
     WORKSHOP_ENABLED_LABEL,
 ]
-SETTINGS_ROW_LABELS = WEEKDAY_LABELS + EXTRA_SETTINGS_LABELS
+# The homepage's weekly board ("קבועים ומתחדשים") - one multiline cell per
+# weekday, each line "שעה | שם השיעור | מי מעביר" (parsed in app.py). These
+# labels come *after* all pre-existing rows so tabs created by older
+# deployments keep every row at the same position (_read_settings_rows is
+# positional) - the new rows simply read as empty until the first /admin
+# save writes them.
+BOARD_DAY_LABELS = [f"לוח הבית - {label}" for label in WEEKDAY_LABELS]
+SETTINGS_ROW_LABELS = WEEKDAY_LABELS + EXTRA_SETTINGS_LABELS + BOARD_DAY_LABELS
 
 _client = None
 
@@ -107,7 +114,13 @@ def _get_settings_worksheet():
     sh = client.open_by_key(sheet_id)
     end_row = 1 + len(SETTINGS_ROW_LABELS)
     try:
-        return sh.worksheet(SETTINGS_SHEET_TITLE)
+        ws = sh.worksheet(SETTINGS_SHEET_TITLE)
+        # Tabs created by an older deployment are sized for fewer settings
+        # rows; writing the now-longer A1:B{end_row} range into them would
+        # fail with an "exceeds grid limits" API error, so grow them first.
+        if ws.row_count < end_row:
+            ws.add_rows(end_row - ws.row_count)
+        return ws
     except gspread.WorksheetNotFound:
         ws = sh.add_worksheet(title=SETTINGS_SHEET_TITLE, rows=end_row + 2, cols=2)
         ws.update(
@@ -133,6 +146,17 @@ def get_weekly_schedule():
     return {WEEKDAY_PY_INDEX[i]: values[label] for i, label in enumerate(WEEKDAY_LABELS)}
 
 
+def get_home_board():
+    """The homepage weekly board: {weekday_label: raw multiline text}, in
+    WEEKDAY_LABELS order. Each line is "שעה | שם | מי מעביר" - parsing (and
+    the fallback when everything here is empty) lives in app.py."""
+    values = _read_settings_rows()
+    return {
+        label: values[board_label]
+        for label, board_label in zip(WEEKDAY_LABELS, BOARD_DAY_LABELS)
+    }
+
+
 def get_site_settings():
     """Free-mode toggle + a single temporary workshop tier, both editable
     from /admin without a code change or redeploy."""
@@ -150,14 +174,21 @@ def get_site_settings():
     }
 
 
-def update_settings(names_by_label, free_mode, workshop_name, workshop_amount, workshop_enabled):
-    """names_by_label: dict of Hebrew day label (WEEKDAY_LABELS) -> class name."""
+def update_settings(names_by_label, free_mode, workshop_name, workshop_amount, workshop_enabled, board_by_label=None):
+    """names_by_label: dict of Hebrew day label (WEEKDAY_LABELS) -> class name.
+    board_by_label: dict of Hebrew day label -> the homepage board's raw
+    multiline text for that day; None preserves whatever is stored."""
+    if board_by_label is None:
+        board_by_label = get_home_board()
+
     ws = _get_settings_worksheet()
     row_values = {label: names_by_label.get(label, "") for label in WEEKDAY_LABELS}
     row_values[FREE_MODE_LABEL] = "כן" if free_mode else "לא"
     row_values[WORKSHOP_NAME_LABEL] = workshop_name
     row_values[WORKSHOP_AMOUNT_LABEL] = str(workshop_amount) if workshop_amount not in (None, "") else ""
     row_values[WORKSHOP_ENABLED_LABEL] = "כן" if workshop_enabled else "לא"
+    for label, board_label in zip(WEEKDAY_LABELS, BOARD_DAY_LABELS):
+        row_values[board_label] = board_by_label.get(label, "")
 
     end_row = 1 + len(SETTINGS_ROW_LABELS)
     values = [["הגדרה", "ערך"]] + [[label, row_values[label]] for label in SETTINGS_ROW_LABELS]

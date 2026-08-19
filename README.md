@@ -52,8 +52,8 @@ templates/        home.html (community landing page), register.html (tier
                   admin_login.html, admin.html
 static/           style.css + logo.png (registration flow), home.css +
                   home.js + assets/ + images/ (community homepage; the
-                  weekly board + WhatsApp/phone details are edited in
-                  home.js's CONFIG/SCHEDULE blocks)
+                  weekly board is edited from /admin - WhatsApp/phone
+                  details are in home.js's CONFIG block)
 ```
 
 ## Local setup
@@ -99,6 +99,12 @@ automatically to the same Google Sheet (`sheets.py`'s `get_site_settings`/
 request, falling back to the plain static tiers if the sheet is unreachable:
 
 - **Weekly class schedule** - one text field per day of the week.
+- **Homepage weekly board** ("קבועים ומתחדשים") - one textarea per day;
+  each line is `שעה | שם השיעור | מי מעביר` (the last part optional).
+  Empty days don't appear. Stored in the same `הגדרות` tab; if the whole
+  board is empty or the Sheet is unreachable, the homepage falls back to
+  the built-in default board (`DEFAULT_BOARD_TEXT` in `app.py`) so it can
+  never render an empty section.
 - **Free mode** - a checkbox for e.g. an opening-month promo. The
   *displayed* price stays real (visitors still see what it normally
   costs); only checkout itself is free - `/pay` skips Nedarim Plus

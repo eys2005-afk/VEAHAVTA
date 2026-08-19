@@ -25,45 +25,12 @@ const CONFIG = {
 };
 
 /* =========================================================
-   📌 הלוח — המערכת השבועית
-   ---------------------------------------------------------
-   כל אובייקט = יום קבוע, עם רשימת המפגשים באותו ערב.
-   שדות בכל יום:
-     day   — שם היום (למשל 'יום ראשון')
-     items — רשימת המפגשים, כל אחד עם:
-       time  — שעה
-       title — שם המפגש
-       desc  — פרטים נוספים (אופציונלי — למשל שם המעביר/ה)
-   ========================================================= */
+   📌 הלוח השבועי ("קבועים ומתחדשים") כבר לא נערך כאן -
+   עורכים אותו מפאנל הניהול של האתר (/admin), והוא נשמר
+   בגוגל שיטס ומוצג אוטומטית בעמוד הבית.
+   =========================================================
 
-const SCHEDULE = [
-  {
-    day: 'יום ראשון',
-    items: [
-      { time: '19:30', title: 'קפה ופינוקים' },
-      { time: '20:00', title: 'חדר כושר של הנפש', desc: 'ארז רומס' },
-      { time: '21:00', title: 'תניא', desc: 'הרב דרור חזן' },
-    ],
-  },
-  {
-    day: 'יום שלישי',
-    items: [
-      { time: '19:30', title: 'קפה ופינוקים' },
-      { time: '20:00', title: 'לשוב אל עצמי', desc: 'נריה פנדל' },
-      { time: '21:00', title: 'מחפשים כיוון — לומדים ר\' נחמן', desc: 'הרב עידו גנירם' },
-    ],
-  },
-  {
-    day: 'יום חמישי',
-    items: [
-      { time: '19:30', title: 'קפה ופינוקים' },
-      { time: '20:00', title: 'פותחים סופ"ש — פרשת שבוע', desc: 'הרב דרור חזן' },
-      { time: '21:00', title: 'חמישי ניגון ב\'ואהבת\'', desc: 'ג\'אם מוזיקלי, בירה קרה, דיבורים מהלב' },
-    ],
-  },
-];
-
-/* =========================================================
+   =========================================================
    מכאן והלאה — קוד האתר. אין צורך לערוך.
    ========================================================= */
 
@@ -105,58 +72,6 @@ const SCHEDULE = [
   document.querySelectorAll('[data-tel-display]').forEach(function (el) {
     el.textContent = CONFIG.phoneDisplay;
   });
-
-  /* ---------- Weekly schedule board ---------- */
-  const grid = document.getElementById('boardGrid');
-  if (grid) {
-    if (SCHEDULE.length === 0) {
-      grid.innerHTML =
-        '<p class="board-note">הלוח מתחדש ממש בקרוב — שווה לחזור לבדוק 🙂</p>';
-    } else {
-      SCHEDULE.forEach(function (day, i) {
-        const card = document.createElement('article');
-        card.className = 'day-card reveal';
-        card.style.animationDelay = (i % 3) * 0.12 + 's';
-
-        const h = document.createElement('h3');
-        h.className = 'day-card-title';
-        h.textContent = day.day;
-        card.appendChild(h);
-
-        const list = document.createElement('div');
-        list.className = 'day-card-list';
-
-        day.items.forEach(function (ev) {
-          const row = document.createElement('div');
-          row.className = 'day-row';
-
-          const time = document.createElement('span');
-          time.className = 'day-time';
-          time.textContent = ev.time;
-
-          const body = document.createElement('div');
-          body.className = 'day-row-body';
-
-          const title = document.createElement('strong');
-          title.textContent = ev.title;
-          body.appendChild(title);
-
-          if (ev.desc) {
-            const desc = document.createElement('span');
-            desc.className = 'day-desc';
-            desc.textContent = ev.desc;
-            body.appendChild(desc);
-          }
-
-          row.append(time, body);
-          list.appendChild(row);
-        });
-
-        card.appendChild(list);
-        grid.appendChild(card);
-      });
-    }
-  }
 
   /* ---------- Mobile nav ---------- */
   const navToggle = document.getElementById('navToggle');

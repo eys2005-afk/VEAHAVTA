@@ -36,6 +36,21 @@
       </section>
 
       <section class="admin-section">
+        <h3>הלוח בעמוד הבית ("קבועים ומתחדשים")</h3>
+        <p class="intro">
+          כל שורה = מפגש אחד, בפורמט: <strong>שעה | שם השיעור | מי מעביר</strong>
+          (החלק האחרון לא חובה). יום שנשאר ריק לא יופיע בלוח.
+        </p>
+        <div class="schedule-form">
+          {% for label in weekday_labels %}
+          <label for="board_{{ loop.index0 }}">יום {{ label }}</label>
+          <textarea id="board_{{ loop.index0 }}" name="board_{{ loop.index0 }}" rows="4"
+            placeholder="19:30 | קפה ופינוקים&#10;20:00 | שם השיעור | שם המעביר/ה">{{ board_values[loop.index0] }}</textarea>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="admin-section">
         <h3>מצב חינם</h3>
         <p class="intro">כשמסומן, ההרשמה תהיה ללא תשלום בפועל (למשל לחודש פתיחה) - אך המחירים הרגילים ימשיכו להיות מוצגים באתר כרגיל.</p>
         <label class="checkbox-label">

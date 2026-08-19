@@ -13,6 +13,7 @@ from sheets import (
     WEEKDAY_PY_INDEX,
     find_registrant,
     get_all_registrants,
+    get_home_board,
     get_site_settings,
     get_weekly_schedule,
     update_settings,
@@ -91,6 +92,60 @@ def get_active_tiers():
 
 MARITAL_STATUSES = ["רווק/ה", "בזוגיות", "נשוי/אה"]
 
+# The homepage weekly board as it shipped with the imported community page
+# (previously hardcoded in static/home.js). Used as the fallback whenever
+# the Sheet-stored board (editable from /admin) is empty or unreachable, so
+# the homepage always shows a real board. Line format matches what /admin
+# collects: "שעה | שם השיעור | מי מעביר" (the third part is optional).
+DEFAULT_BOARD_TEXT = {
+    "ראשון": "19:30 | קפה ופינוקים\n20:00 | חדר כושר של הנפש | ארז רומס\n21:00 | תניא | הרב דרור חזן",
+    "שלישי": "19:30 | קפה ופינוקים\n20:00 | לשוב אל עצמי | נריה פנדל\n21:00 | מחפשים כיוון — לומדים ר' נחמן | הרב עידו גנירם",
+    "חמישי": "19:30 | קפה ופינוקים\n20:00 | פותחים סופ\"ש — פרשת שבוע | הרב דרור חזן\n21:00 | חמישי ניגון ב'ואהבת' | ג'אם מוזיקלי, בירה קרה, דיבורים מהלב",
+}
+
+
+def _parse_board_day(text):
+    """One day's raw multiline text -> list of {time, title, desc} items.
+    Each line is 'שעה | שם | מי מעביר'; the desc part is optional, and a
+    line without any '|' is treated as a title-only item so a slightly
+    off-format edit still shows up rather than silently disappearing."""
+    items = []
+    for line in (text or "").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        parts = [p.strip() for p in line.split("|")]
+        if len(parts) == 1:
+            items.append({"time": "", "title": parts[0], "desc": ""})
+        else:
+            items.append({
+                "time": parts[0],
+                "title": parts[1],
+                "desc": parts[2] if len(parts) > 2 else "",
+            })
+    return items
+
+
+def get_home_board_days():
+    """The homepage board as render-ready data: [{day, items}], only days
+    that actually have entries, in WEEKDAY_LABELS order. Falls back to
+    DEFAULT_BOARD_TEXT when the Sheet is unreachable *or* stores an
+    all-empty board (e.g. before the first /admin save)."""
+    try:
+        board_text = get_home_board()
+    except Exception:
+        board_text = {}
+
+    if not any((board_text.get(label) or "").strip() for label in WEEKDAY_LABELS):
+        board_text = DEFAULT_BOARD_TEXT
+
+    days = []
+    for label in WEEKDAY_LABELS:
+        items = _parse_board_day(board_text.get(label, ""))
+        if items:
+            days.append({"day": f"יום {label}", "items": items})
+    return days
+
 # Per Nedarim Plus's official iframe docs: their CallBack always originates
 # from this IP - checked (not enforced yet) to guard against spoofing once
 # the callback is confirmed working end-to-end.
@@ -118,9 +173,10 @@ def admin_required(view):
 @app.route("/")
 def index():
     # The community landing page (imported from the standalone site that
-    # used to live on Netlify) - static content, no Sheets dependency, so
-    # the homepage always loads instantly even if Sheets is down.
-    return render_template("home.html")
+    # used to live on Netlify). The weekly board is the only dynamic piece,
+    # and it falls back to a built-in default (see get_home_board_days), so
+    # a Sheets hiccup can never break the homepage.
+    return render_template("home.html", board_days=get_home_board_days())
 
 
 @app.route("/register")
@@ -385,6 +441,10 @@ def admin_dashboard():
             label: request.form.get(f"day_{i}", "").strip()
             for i, label in enumerate(WEEKDAY_LABELS)
         }
+        board_by_label = {
+            label: request.form.get(f"board_{i}", "").strip()
+            for i, label in enumerate(WEEKDAY_LABELS)
+        }
         workshop_amount = request.form.get("workshop_amount", "").strip()
         update_settings(
             names_by_label,
@@ -392,6 +452,7 @@ def admin_dashboard():
             workshop_name=request.form.get("workshop_name", "").strip(),
             workshop_amount=workshop_amount or None,
             workshop_enabled=request.form.get("workshop_enabled") == "on",
+            board_by_label=board_by_label,
         )
         return redirect(url_for("admin_dashboard"))
 
@@ -399,10 +460,19 @@ def admin_dashboard():
     day_values = [schedule.get(WEEKDAY_PY_INDEX[i], "") for i in range(len(WEEKDAY_LABELS))]
     settings = get_site_settings()
 
+    # Prefill the board textareas: the stored board, or (before the first
+    # save / after a full clear) the built-in default the homepage shows -
+    # so what the client sees in /admin always matches the live site.
+    board_text = get_home_board()
+    if not any((board_text.get(label) or "").strip() for label in WEEKDAY_LABELS):
+        board_text = DEFAULT_BOARD_TEXT
+    board_values = [board_text.get(label, "") for label in WEEKDAY_LABELS]
+
     return render_template(
         "admin.html",
         weekday_labels=WEEKDAY_LABELS,
         day_values=day_values,
+        board_values=board_values,
         settings=settings,
         registrants=get_all_registrants(),
         sheet_url=f"https://docs.google.com/spreadsheets/d/{os.environ.get('GOOGLE_SHEET_ID', '')}/edit",
