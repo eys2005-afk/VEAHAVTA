@@ -1,8 +1,8 @@
 :root {
-  /* Matches the client's main site (vahvta.netlify.app) exactly - colors
-     sampled directly from its rendered pages. The earlier navy/gold pair
-     was extracted from a different-colored variant of the same logo the
-     client had sent before finding this one. */
+  /* The registration flow's palette, matching the community homepage
+     (home.css) so the whole site reads as one. The homepage originally
+     lived as a standalone build on Netlify; it now serves from this same
+     app at the custom domain www.vehaavta.co.il. */
   --primary: #1ea2a7;
   --primary-dark: #0b3a40;
   --gold: #e59025;

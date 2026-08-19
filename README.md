@@ -222,6 +222,28 @@ Live on Render at `https://veahavta-app.onrender.com`, with `GOOGLE_SHEET_ID`,
 `GOOGLE_SERVICE_ACCOUNT_JSON_CONTENT`, `NEDARIM_MOSAD_ID`, and
 `NEDARIM_CALLBACK_URL` set as environment variables there.
 
+### Custom domain
+
+Public domain: **`www.vehaavta.co.il`** (registered at mynames.co.il; the
+bare `vehaavta.co.il` redirects to the `www` host, configured in Render's
+Custom Domains). DNS at the registrar: `www` is a CNAME to
+`veahavta-app.onrender.com` (or an A record to Render's `216.24.57.1`), and
+the apex is an A record to `216.24.57.1`. Render issues the HTTPS
+certificate automatically once DNS verifies.
+
+Note the spelling: the *domain* is `vehaavta` (what was actually
+registered), while the Render service and repo are `veahavta` - both are
+transliterations of ואהבת and are intentionally left as-is.
+
+`NEDARIM_CALLBACK_URL` deliberately stays pointed at the stable
+`onrender.com` host, not the custom domain: it's a server-to-server
+callback from Nedarim Plus (no human sees it), and keeping it off the
+redirect/HTTPS-upgrade path of the custom domain avoids any interference
+with the POSTed callback.
+
+`robots.txt` and `sitemap.xml` are served dynamically (routes in `app.py`)
+and reflect whatever host is used, so they need no per-domain edit.
+
 ## Open items
 
 1. **`NEDARIM_TEST_AMOUNT` is likely still set to `1` on Render** from
