@@ -1,9 +1,13 @@
 # ואהבת (VEAHAVTA)
 
-QR-code landing page for a class called "ואהבת". Flow:
+Community site + class registration for "ואהבת". Flow:
 
-1. Visitor scans a QR code and lands on `/` ("כמה טוב שבאת!").
-2. They pick a tier and enter their phone number.
+1. `/` is the community landing page (hero, about, activities, testimonials,
+   weekly board, WhatsApp contact form) - imported from the standalone
+   one-pager that previously lived on Netlify (vahvta.netlify.app). Its
+   "בואו לערב הקרוב" buttons lead to `/register`.
+2. On `/register` ("כמה טוב שבאת!" - previously served at `/`, e.g. from a
+   QR code) they pick a tier and enter their phone number.
 3. Returning registrants see a "כיף שהגעת שוב!" greeting and skip straight
    to payment; new registrants see "ברוך הבא!" on a short details form
    (`/details`).
@@ -32,19 +36,24 @@ that repo.
 ## Project layout
 
 ```
-app.py            routes: /, /check-phone, /details, /pay, /webhook/nedarim,
-                  /admin, /admin/login, /admin/logout, /api/health
+app.py            routes: / (community homepage), /register, /check-phone,
+                  /details, /pay, /webhook/nedarim, /admin, /admin/login,
+                  /admin/logout, /api/health
 sheets.py         Google Sheets helpers - registrants (find_registrant,
                   upsert_registrant, get_all_registrants) and site settings:
                   weekly class schedule + free-mode/workshop toggles
                   (get_weekly_schedule, get_site_settings, update_settings)
 nedarim.py        tier config (including punch-card "entries") + Nedarim
                   Plus payment param/URL builders
-templates/        index.html (tier buttons + phone modal), details.html
-                  (new-registrant form), pay.html (embedded Nedarim Plus
-                  iframe), checkin.html (punch-card check-in / free
-                  confirmation), admin_login.html, admin.html
-static/           style.css, logo.png (the client's real logo)
+templates/        home.html (community landing page), register.html (tier
+                  buttons + phone modal), details.html (new-registrant
+                  form), pay.html (embedded Nedarim Plus iframe),
+                  checkin.html (punch-card check-in / free confirmation),
+                  admin_login.html, admin.html
+static/           style.css + logo.png (registration flow), home.css +
+                  home.js + assets/ + images/ (community homepage; the
+                  weekly board + WhatsApp/phone details are edited in
+                  home.js's CONFIG/SCHEDULE blocks)
 ```
 
 ## Local setup

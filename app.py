@@ -117,12 +117,22 @@ def admin_required(view):
 
 @app.route("/")
 def index():
+    # The community landing page (imported from the standalone site that
+    # used to live on Netlify) - static content, no Sheets dependency, so
+    # the homepage always loads instantly even if Sheets is down.
+    return render_template("home.html")
+
+
+@app.route("/register")
+def register():
+    # The original registration screen (tier buttons + phone modal) -
+    # linked from the homepage's "בואו לערב הקרוב" buttons.
     try:
         free_mode_active = bool(get_site_settings().get("free_mode"))
     except Exception:
         free_mode_active = False
     return render_template(
-        "index.html",
+        "register.html",
         tiers=get_active_tiers(),
         class_name=get_class_name(),
         free_mode=free_mode_active,
@@ -226,7 +236,7 @@ def pay():
     tiers = get_active_tiers()
 
     if not phone or not tier or tier not in tiers or not tiers[tier]["enabled"]:
-        return redirect(url_for("index"))
+        return redirect(url_for("register"))
 
     tier_config = tiers[tier]
     registrant = find_registrant(phone) or {}
