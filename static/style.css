@@ -114,6 +114,21 @@ body {
   margin-top: 16px;
 }
 
+/* A plain "back to the rest of the site" link for the mid-flow pages
+   (payment, check-in) - so a visitor is never stuck on a dead-end screen
+   with only the browser back button to escape. */
+.back-to-site {
+  display: inline-block;
+  margin-top: 28px;
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.back-to-site:hover {
+  text-decoration: underline;
+}
+
 
 .tiers {
   display: flex;

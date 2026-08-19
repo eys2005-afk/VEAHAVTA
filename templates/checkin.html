@@ -11,7 +11,9 @@
 </head>
 <body>
   <header class="header">
-    <img src="{{ url_for('static', filename='logo.png') }}" alt="ואהבת" class="logo">
+    <a href="{{ url_for('index') }}" title="חזרה לעמוד הבית" aria-label="חזרה לעמוד הבית">
+      <img src="{{ url_for('static', filename='logo.png') }}" alt="ואהבת" class="logo">
+    </a>
   </header>
 
   <main class="container">
@@ -27,6 +29,8 @@
     {% else %}
     <p class="intro">נשארו לך {{ entries_remaining }} כניסות</p>
     {% endif %}
+
+    <a href="{{ url_for('index') }}" class="back-to-site">← חזרה לאתר</a>
   </main>
 </body>
 </html>
