@@ -154,6 +154,38 @@ NEDARIM_CALLBACK_IP = "18.194.219.73"
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
 
 
+# The one public domain the site should be indexed and reached on. The app
+# is also always reachable at its raw <service>.onrender.com host (that host
+# can't be turned off - the payment callback depends on it), so to avoid
+# Google seeing the same site under two addresses ("duplicate content"),
+# human visits to the onrender host are 301-redirected here. Overridable via
+# env var in case the canonical domain ever changes, without a code edit.
+CANONICAL_HOST = os.environ.get("CANONICAL_HOST", "www.vehaavta.co.il")
+
+# Paths that must keep answering on the raw onrender.com host and must NOT be
+# redirected to the canonical domain:
+#   /webhook/ - the Nedarim Plus payment callback. NEDARIM_CALLBACK_URL points
+#     at the onrender host; it's a server-to-server POST, and a 301 would
+#     either not be followed or drop the POST body. Redirecting it would break
+#     payment confirmation.
+#   /api/     - health/status endpoints Render itself may poll; a redirect
+#     could read as an unhealthy response.
+_NO_CANONICAL_REDIRECT_PREFIXES = ("/webhook/", "/api/")
+
+
+@app.before_request
+def redirect_onrender_to_canonical():
+    host = request.host.split(":")[0]
+    if not host.endswith(".onrender.com"):
+        return None  # already on the custom domain (or local dev) - leave it
+    if request.path.startswith(_NO_CANONICAL_REDIRECT_PREFIXES):
+        return None  # machine-to-machine paths keep working on onrender
+    target = f"https://{CANONICAL_HOST}{request.path}"
+    if request.query_string:
+        target += "?" + request.query_string.decode()
+    return redirect(target, code=301)
+
+
 def _get_request_value(key):
     if request.is_json:
         return (request.get_json(silent=True) or {}).get(key)
