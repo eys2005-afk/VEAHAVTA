@@ -562,6 +562,16 @@ h2 {
 .footer-dots span { width: 8px; height: 8px; border-radius: 50%; background: var(--orange); }
 .footer-dots span:nth-child(2) { background: rgba(255,255,255,0.55); }
 .footer-credit { font-size: .88rem; color: rgba(255,255,255,0.55); }
+/* Discreet link to the admin panel - reachable for the team, unobtrusive
+   for visitors (the panel itself is password-protected). */
+.footer-admin {
+  display: inline-block;
+  margin-top: 14px;
+  font-size: .8rem;
+  color: rgba(255,255,255,0.4);
+  text-decoration: none;
+}
+.footer-admin:hover { color: rgba(255,255,255,0.85); text-decoration: underline; }
 
 /* ---------- Floating WhatsApp ---------- */
 .wa-fab {
