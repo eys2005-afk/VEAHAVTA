@@ -80,6 +80,29 @@ not just two - worth checking all three got set up, not only GitHub/Lovable:
 `NEDARIM_TEST_AMOUNT`, adding a new integration's API key) are Render
 environment-variable changes that only someone with Render access can make.
 
+## Small vs. big - the line Dror works against
+
+So there's no ambiguity about what Dror can do himself in Lovable versus
+what needs a real Claude Code session against this repo, the same
+classification is written in both places - here, and as this Lovable
+project's knowledge (`set_project_knowledge` on
+`project_id: 394e154b-5495-479a-ac92-3570db500e6b`), so Lovable's own
+agent self-polices scope too:
+
+**Small - Dror can ask Lovable directly, no need to involve anyone:**
+images, text/wording/headlines/quotes, colors/sizing/spacing/layout,
+design components, light animations, visual rework attempts.
+
+**Big - needs this repo directly (i.e. someone with push access + a real
+Claude Code session, not Lovable):** anything touching payments (Nedarim
+Plus), registration/routing logic (where a button actually links to, flow
+changes), any external service integration (WhatsApp, Twilio,
+notifications, any API), anything touching Google Sheets or real
+registrant data or `/admin`, or any credential/API key/env var.
+
+If Lovable's knowledge content is ever updated, keep this section and that
+project's knowledge in sync.
+
 ## Chat language
 
 Reply to the client in Hebrew, masculine grammatical form (לשון זכר) -
