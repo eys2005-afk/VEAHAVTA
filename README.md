@@ -38,13 +38,17 @@ that repo.
 ```
 app.py            routes: / (community homepage), /register, /check-phone,
                   /details, /pay, /webhook/nedarim, /admin, /admin/login,
-                  /admin/logout, /api/health
+                  /admin/logout, /admin/gallery/upload, /admin/gallery/delete,
+                  /api/health
 sheets.py         Google Sheets helpers - registrants (find_registrant,
                   upsert_registrant, get_all_registrants) and site settings:
                   weekly class schedule + free-mode/workshop toggles
                   (get_weekly_schedule, get_site_settings, update_settings)
 nedarim.py        tier config (including punch-card "entries") + Nedarim
                   Plus payment param/URL builders
+gallery.py        self-service "about" photo gallery for /admin - add/remove
+                  photos via GitHub's Contents API (real commits), since
+                  Render's own filesystem is ephemeral (see GITHUB_TOKEN above)
 templates/        home.html (community landing page), register.html (tier
                   buttons + phone modal), details.html (new-registrant
                   form), pay.html (embedded Nedarim Plus iframe),
@@ -89,6 +93,13 @@ See `.env.example`. In short:
   if the Sheet-based schedule (edited from `/admin`) is unreachable; then
   `CLASS_NAME`, then a placeholder.
 - `ADMIN_PASSWORD` - password for `/admin`. Login is disabled if left empty.
+- `GITHUB_TOKEN` - lets `/admin`'s photo gallery section add/remove photos
+  itself (`gallery.py`). A fine-grained GitHub PAT scoped to just this repo
+  (Contents: Read and write). Every upload/delete is a real commit via
+  GitHub's API, which is what actually makes it live once Render redeploys.
+  Without it, the gallery section shows an error instead of failing
+  silently. `GITHUB_REPO`/`GITHUB_BRANCH` only need setting if this ever
+  moves to a different repo/branch than `gallery.py`'s defaults.
 
 ## Admin panel (`/admin`)
 
@@ -114,6 +125,10 @@ request, falling back to the plain static tiers if the sheet is unreachable:
   button on the same fixed homepage/QR link (no new link needed per event).
 - **Registrants** - a read-only table of everyone who's registered, plus a
   link to open the full Google Sheet directly.
+- **"About" photo gallery** - add/remove the photos shown in the homepage's
+  swipeable gallery (`static/images/gallery/`), without touching the repo.
+  Needs `GITHUB_TOKEN` (see above); every change is a real commit, so it
+  takes the usual minute-or-two to actually appear on the live site.
 
 ## Pricing (per the client)
 

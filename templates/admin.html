@@ -80,6 +80,48 @@
     </form>
 
     <section class="admin-section">
+      <h3>תמונות הגלריה (עמוד הבית - "ברוכים הבאים הביתה")</h3>
+      <p class="intro">
+        מה שמופיע כאן זה בדיוק מה שמופיע באתר. העלאה/מחיקה לוקחת דקה-שתיים
+        עד שהיא מופיעה בפועל באתר החי (כמו כל עדכון אחר באתר).
+      </p>
+
+      {% if gallery_status == "uploaded" %}
+      <p class="intro">✓ התמונה הועלתה. היא תופיע באתר תוך דקה-שתיים.</p>
+      {% elif gallery_status == "deleted" %}
+      <p class="intro">✓ התמונה נמחקה. השינוי יופיע באתר תוך דקה-שתיים.</p>
+      {% elif gallery_status == "no-file" %}
+      <p class="error">לא נבחר קובץ.</p>
+      {% elif gallery_status %}
+      <p class="error">{{ gallery_status }}</p>
+      {% endif %}
+
+      {% if gallery_error %}
+      <p class="error">{{ gallery_error }}</p>
+      {% else %}
+      <div class="gallery-grid">
+        {% for img in gallery_images %}
+        <div class="gallery-item">
+          <img src="{{ img.download_url }}" alt="{{ img.name }}">
+          <form method="POST" action="{{ url_for('admin_gallery_delete') }}"
+                onsubmit="return confirm('למחוק את התמונה הזו?');">
+            <input type="hidden" name="filename" value="{{ img.name }}">
+            <button type="submit" class="btn-delete-photo">מחיקה</button>
+          </form>
+        </div>
+        {% else %}
+        <p class="intro">אין עדיין תמונות בגלריה.</p>
+        {% endfor %}
+      </div>
+
+      <form method="POST" action="{{ url_for('admin_gallery_upload') }}" enctype="multipart/form-data" class="gallery-upload-form">
+        <input type="file" name="photo" accept="image/png, image/jpeg, image/webp" multiple required>
+        <button type="submit">העלאת תמונה</button>
+      </form>
+      {% endif %}
+    </section>
+
+    <section class="admin-section">
       <h3>נרשמים</h3>
       <p class="intro">
         <a href="{{ sheet_url }}" target="_blank" rel="noopener">לפתיחת הגיליון המלא בגוגל שיטס</a>

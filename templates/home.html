@@ -128,18 +128,21 @@
             </ul>
           </div>
           <figure class="about-photo reveal delay-2">
-            <!-- 🖼 גלריה - אפשר לגלול הצידה. להוסיף/להחליף תמונות: מוסיפים קובץ
-                 ל-static/images/ ושורת <img> תואמת כאן. -->
+            <!-- 🖼 גלריה - אפשר לגלול הצידה. לניהול התמונות (הוספה/מחיקה):
+                 /admin - לא עורכים את הרשימה כאן ידנית. -->
             <div class="about-photo-track" role="group" aria-label="תמונות מהבית שלנו — אפשר לגלול הצידה">
-              <img src="{{ url_for('static', filename='images/place-1.jpg') }}" alt="המקום של ואהבת — פנים הבית ברמת גן" loading="lazy">
-              <img src="{{ url_for('static', filename='images/place-2.jpg') }}" alt="המקום של ואהבת" loading="lazy">
-              <img src="{{ url_for('static', filename='images/place-3.jpg') }}" alt="מפגש סביב השולחן בואהבת" loading="lazy">
-              <img src="{{ url_for('static', filename='images/place-4.jpg') }}" alt="חברי הקהילה יחד בואהבת" loading="lazy">
+              {% for name in gallery_images %}
+              <img src="{{ url_for('static', filename='images/gallery/' + name) }}" alt="המקום של ואהבת" loading="lazy">
+              {% endfor %}
               <figcaption>הבית שלנו — עוזיאל 50, רמת גן</figcaption>
             </div>
+            {% if gallery_images|length > 1 %}
             <div class="about-photo-dots" aria-hidden="true">
-              <span class="active"></span><span></span><span></span><span></span>
+              {% for name in gallery_images %}
+              <span{% if loop.first %} class="active"{% endif %}></span>
+              {% endfor %}
             </div>
+            {% endif %}
           </figure>
         </div>
       </div>

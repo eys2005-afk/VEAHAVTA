@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from flask import Flask, Response, jsonify, redirect, render_template, request, session, url_for
 from flask_cors import CORS
 
+import gallery
 from nedarim import TIERS, build_iframe_transaction, build_payment_url, test_charge_amount
 from sheets import (
     WEEKDAY_LABELS,
@@ -208,7 +209,17 @@ def index():
     # used to live on Netlify). The weekly board is the only dynamic piece,
     # and it falls back to a built-in default (see get_home_board_days), so
     # a Sheets hiccup can never break the homepage.
-    return render_template("home.html", board_days=get_home_board_days())
+    #
+    # gallery_images reads whatever's on disk in *this* deployed container
+    # (gallery.local_image_filenames) - it reflects the last successful
+    # deploy, not necessarily the very latest /admin upload (that shows up
+    # once Render finishes redeploying - a minute or two, same as any other
+    # change to this repo).
+    return render_template(
+        "home.html",
+        board_days=get_home_board_days(),
+        gallery_images=gallery.local_image_filenames(),
+    )
 
 
 @app.route("/register")
@@ -492,6 +503,16 @@ def admin_dashboard():
     day_values = [schedule.get(WEEKDAY_PY_INDEX[i], "") for i in range(len(WEEKDAY_LABELS))]
     settings = get_site_settings()
 
+    # Read straight from GitHub (not the local disk) so this always shows
+    # the true current state, even seconds after an upload/delete while
+    # Render is still mid-redeploy.
+    try:
+        gallery_images = gallery.list_images()
+        gallery_error = None
+    except gallery.GalleryError as e:
+        gallery_images = []
+        gallery_error = str(e)
+
     # Prefill the board textareas: the stored board, or (before the first
     # save / after a full clear) the built-in default the homepage shows -
     # so what the client sees in /admin always matches the live site.
@@ -508,7 +529,35 @@ def admin_dashboard():
         settings=settings,
         registrants=get_all_registrants(),
         sheet_url=f"https://docs.google.com/spreadsheets/d/{os.environ.get('GOOGLE_SHEET_ID', '')}/edit",
+        gallery_images=gallery_images,
+        gallery_error=gallery_error,
+        gallery_status=request.args.get("gallery_status"),
     )
+
+
+@app.route("/admin/gallery/upload", methods=["POST"])
+@admin_required
+def admin_gallery_upload():
+    files = [f for f in request.files.getlist("photo") if f and f.filename]
+    if not files:
+        return redirect(url_for("admin_dashboard", gallery_status="no-file"))
+    try:
+        for f in files:
+            gallery.add_image(f.filename, f.read())
+    except gallery.GalleryError as e:
+        return redirect(url_for("admin_dashboard", gallery_status=str(e)))
+    return redirect(url_for("admin_dashboard", gallery_status="uploaded"))
+
+
+@app.route("/admin/gallery/delete", methods=["POST"])
+@admin_required
+def admin_gallery_delete():
+    filename = request.form.get("filename", "")
+    try:
+        gallery.delete_image(filename)
+    except gallery.GalleryError as e:
+        return redirect(url_for("admin_dashboard", gallery_status=str(e)))
+    return redirect(url_for("admin_dashboard", gallery_status="deleted"))
 
 
 @app.route("/googleb68dc3903a36fa58.html")
