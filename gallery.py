@@ -32,6 +32,26 @@ GITHUB_REPO = os.environ.get("GITHUB_REPO", "eys2005-afk/VEAHAVTA")
 GITHUB_BRANCH = os.environ.get("GITHUB_BRANCH", "claude/veahavta-flask-skeleton-ohzlsq")
 
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
+
+
+def _sort_key(name):
+    """Ordering for the gallery: the original seed photos (place-1.jpg..)
+    always come first, in their own numeric order - the caption badge
+    ("הבית שלנו...") is positioned over whatever lands in that first slide,
+    so a new upload must never be sorted ahead of them (plain alphabetical
+    sort did exactly that: "photo-..." < "place-..." since 'h' < 'l',
+    bumping a brand-new photo into the caption's slot). Anything else
+    (photo-<ms-epoch-timestamp>.ext uploads) sorts after, in upload order -
+    the timestamp is a fixed-width decimal string, so alphabetical order
+    there already matches chronological order."""
+    if name.startswith("place-"):
+        try:
+            return (0, int(name.split("-", 1)[1].split(".", 1)[0]))
+        except ValueError:
+            return (0, 0)
+    return (1, name)
+
+
 MAX_UPLOAD_BYTES = 8 * 1024 * 1024  # 8MB - generous for a phone photo, not a dumping ground
 
 API_BASE = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{GALLERY_DIR}"
@@ -93,7 +113,7 @@ def list_images():
         for item in resp.json()
         if item["type"] == "file"
     ]
-    return sorted(items, key=lambda i: i["name"])
+    return sorted(items, key=lambda i: _sort_key(i["name"]))
 
 
 def add_image(original_name, content):
@@ -161,4 +181,4 @@ def local_image_filenames():
         ]
     except FileNotFoundError:
         return []
-    return sorted(names)
+    return sorted(names, key=_sort_key)
