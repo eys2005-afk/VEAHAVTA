@@ -140,6 +140,27 @@ const CONFIG = {
     reveals.forEach(function (el) { el.classList.add('visible'); });
   }
 
+  /* ---------- "Our house" photo carousel - dots follow scroll ---------- */
+  const photoTrack = document.querySelector('.about-photo-track');
+  const photoDots = document.querySelectorAll('.about-photo-dots span');
+  if (photoTrack && photoDots.length && 'IntersectionObserver' in window) {
+    const photos = photoTrack.querySelectorAll('img');
+    const photoObserver = new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            const i = Array.prototype.indexOf.call(photos, entry.target);
+            photoDots.forEach(function (dot, di) {
+              dot.classList.toggle('active', di === i);
+            });
+          }
+        });
+      },
+      { root: photoTrack, threshold: 0.6 }
+    );
+    photos.forEach(function (img) { photoObserver.observe(img); });
+  }
+
   /* ---------- Contact form -> WhatsApp ---------- */
   const form = document.getElementById('contactForm');
   const status = document.getElementById('formStatus');

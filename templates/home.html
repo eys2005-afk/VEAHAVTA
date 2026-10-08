@@ -128,9 +128,18 @@
             </ul>
           </div>
           <figure class="about-photo reveal delay-2">
-            <!-- 🖼 תמונה 1: המקום עצמו (בלי אנשים) — להחליף את הקובץ images/place-1.jpg -->
-            <img src="{{ url_for('static', filename='images/place-1.jpg') }}" alt="המקום של ואהבת — פנים הבית ברמת גן" loading="lazy">
-            <figcaption>הבית שלנו — עוזיאל 50, רמת גן</figcaption>
+            <!-- 🖼 גלריה - אפשר לגלול הצידה. להוסיף/להחליף תמונות: מוסיפים קובץ
+                 ל-static/images/ ושורת <img> תואמת כאן. -->
+            <div class="about-photo-track" role="group" aria-label="תמונות מהבית שלנו — אפשר לגלול הצידה">
+              <img src="{{ url_for('static', filename='images/place-1.jpg') }}" alt="המקום של ואהבת — פנים הבית ברמת גן" loading="lazy">
+              <img src="{{ url_for('static', filename='images/place-2.jpg') }}" alt="המקום של ואהבת" loading="lazy">
+              <img src="{{ url_for('static', filename='images/place-3.jpg') }}" alt="מפגש סביב השולחן בואהבת" loading="lazy">
+              <img src="{{ url_for('static', filename='images/place-4.jpg') }}" alt="חברי הקהילה יחד בואהבת" loading="lazy">
+              <figcaption>הבית שלנו — עוזיאל 50, רמת גן</figcaption>
+            </div>
+            <div class="about-photo-dots" aria-hidden="true">
+              <span class="active"></span><span></span><span></span><span></span>
+            </div>
           </figure>
         </div>
       </div>
