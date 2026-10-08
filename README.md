@@ -170,6 +170,9 @@ collected during registration.
 
 ## Resolved
 
+- **Test-mode pricing turned off**: `NEDARIM_TEST_AMOUNT` removed from
+  Render (confirmed by the client, 2026-10-08) - real charges now go
+  through at each tier's actual price instead of being forced to ₪1.
 - **Nedarim Plus Mosad ID**: `7016996`, confirmed real and working.
 - **Official iframe protocol**: the client supplied Nedarim Plus's actual
   iframe integration guide (PDF). This resolved several earlier guesses:
@@ -261,20 +264,17 @@ and reflect whatever host is used, so they need no per-domain edit.
 
 ## Open items
 
-1. **`NEDARIM_TEST_AMOUNT` is likely still set to `1` on Render** from
-   testing - remove it once real charges should go through at full price
-   (see `.env.example`).
-2. **`NEDARIM_CALLBACK_IP` (`18.194.219.73`) logged but not enforced** -
+1. **`NEDARIM_CALLBACK_IP` (`18.194.219.73`) logged but not enforced** -
    confirmed accurate against real callback hits; worth enforcing to
    guard against spoofed callbacks.
-3. **Old duplicate registrant rows** - repeat test submissions before the
+2. **Old duplicate registrant rows** - repeat test submissions before the
    `numericise_ignore` fix (see "Resolved") each appended a new row
    instead of updating one; the Sheet has several old rows per test phone
    number that are safe to clean up manually whenever convenient.
-4. **Monthly subscription (הוראת קבע) price + recurring parameter** - price
+3. **Monthly subscription (הוראת קבע) price + recurring parameter** - price
    wasn't given in the client's brief; the docs show a `PaymentType: 'HK'`
    mode with its own `Amount`/`Tashlumim` meaning (monthly amount / number
    of months), which `build_iframe_transaction()` already switches to for
    the monthly tier - still disabled until the price is confirmed.
-5. **Exact class/session names** - the client sets these weekly from
+4. **Exact class/session names** - the client sets these weekly from
    `/admin` now; no code change needed once they start filling it in.
