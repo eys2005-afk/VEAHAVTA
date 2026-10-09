@@ -23,146 +23,202 @@
       </div>
     </div>
 
+    <nav class="admin-tabs" role="tablist" aria-label="לשוניות ניהול">
+      <button type="button" class="admin-tab active" data-tab="schedule" role="tab" aria-selected="true">שיעורים ולוח</button>
+      <button type="button" class="admin-tab" data-tab="settings" role="tab" aria-selected="false">הגדרות אתר</button>
+      <button type="button" class="admin-tab" data-tab="gallery" role="tab" aria-selected="false">גלריה</button>
+      <button type="button" class="admin-tab" data-tab="registrants" role="tab" aria-selected="false">נרשמים</button>
+    </nav>
+
     <form method="POST" action="{{ url_for('admin_dashboard') }}">
-      <section class="admin-section">
-        <h3>שיעורי השבוע</h3>
-        <p class="intro">מה שם השיעור בכל יום? השאירו ריק ביום שאין בו שיעור.</p>
-        <div class="schedule-form">
-          {% for label in weekday_labels %}
-          <label for="day_{{ loop.index0 }}">יום {{ label }}</label>
-          <input type="text" id="day_{{ loop.index0 }}" name="day_{{ loop.index0 }}" value="{{ day_values[loop.index0] }}">
-          {% endfor %}
-        </div>
-      </section>
+      <div class="tab-panel active" data-tab-panel="schedule">
+        <section class="admin-section">
+          <h3>שיעורי השבוע</h3>
+          <p class="intro">מה שם השיעור בכל יום? השאירו ריק ביום שאין בו שיעור.</p>
+          <div class="schedule-form">
+            {% for label in weekday_labels %}
+            <label for="day_{{ loop.index0 }}">יום {{ label }}</label>
+            <input type="text" id="day_{{ loop.index0 }}" name="day_{{ loop.index0 }}" value="{{ day_values[loop.index0] }}">
+            {% endfor %}
+          </div>
+        </section>
 
-      <section class="admin-section">
-        <h3>הלוח בעמוד הבית ("קבועים ומתחדשים")</h3>
-        <p class="intro">
-          כל שורה = מפגש אחד, בפורמט: <strong>שעה | שם השיעור | מי מעביר</strong>
-          (החלק האחרון לא חובה). יום שנשאר ריק לא יופיע בלוח.
-        </p>
-        <div class="schedule-form">
-          {% for label in weekday_labels %}
-          <label for="board_{{ loop.index0 }}">יום {{ label }}</label>
-          <textarea id="board_{{ loop.index0 }}" name="board_{{ loop.index0 }}" rows="4"
-            placeholder="19:30 | קפה ופינוקים&#10;20:00 | שם השיעור | שם המעביר/ה">{{ board_values[loop.index0] }}</textarea>
-          {% endfor %}
-        </div>
-      </section>
+        <section class="admin-section">
+          <h3>הלוח בעמוד הבית ("קבועים ומתחדשים")</h3>
+          <p class="intro">
+            כל שורה = מפגש אחד, בפורמט: <strong>שעה | שם השיעור | מי מעביר</strong>
+            (החלק האחרון לא חובה). יום שנשאר ריק לא יופיע בלוח.
+          </p>
+          <div class="schedule-form">
+            {% for label in weekday_labels %}
+            <label for="board_{{ loop.index0 }}">יום {{ label }}</label>
+            <textarea id="board_{{ loop.index0 }}" name="board_{{ loop.index0 }}" rows="4"
+              placeholder="19:30 | קפה ופינוקים&#10;20:00 | שם השיעור | שם המעביר/ה">{{ board_values[loop.index0] }}</textarea>
+            {% endfor %}
+          </div>
+        </section>
+      </div>
 
-      <section class="admin-section">
-        <h3>מצב חינם</h3>
-        <p class="intro">כשמסומן, ההרשמה תהיה ללא תשלום בפועל (למשל לחודש פתיחה) - אך המחירים הרגילים ימשיכו להיות מוצגים באתר כרגיל.</p>
-        <label class="checkbox-label">
-          <input type="checkbox" name="free_mode" {% if settings.free_mode %}checked{% endif %}>
-          הפעל מצב חינם
-        </label>
-      </section>
-
-      <section class="admin-section">
-        <h3>סדנה זמנית</h3>
-        <p class="intro">מוסיף כפתור מסלול נוסף בדף הראשי, בנוסף לקיימים.</p>
-        <div class="schedule-form">
-          <label for="workshop_name">שם הסדנה</label>
-          <input type="text" id="workshop_name" name="workshop_name" value="{{ settings.workshop_name }}">
-
-          <label for="workshop_amount">מחיר (₪)</label>
-          <input type="text" id="workshop_amount" name="workshop_amount" value="{{ settings.workshop_amount if settings.workshop_amount is not none else '' }}">
-
+      <div class="tab-panel" data-tab-panel="settings">
+        <section class="admin-section">
+          <h3>מצב חינם</h3>
+          <p class="intro">כשמסומן, ההרשמה תהיה ללא תשלום בפועל (למשל לחודש פתיחה) - אך המחירים הרגילים ימשיכו להיות מוצגים באתר כרגיל.</p>
           <label class="checkbox-label">
-            <input type="checkbox" name="workshop_enabled" {% if settings.workshop_enabled %}checked{% endif %}>
-            הצג את הסדנה בדף הראשי
+            <input type="checkbox" name="free_mode" {% if settings.free_mode %}checked{% endif %}>
+            הפעל מצב חינם
           </label>
-        </div>
-      </section>
+        </section>
 
-      <button type="submit">שמירה</button>
+        <section class="admin-section">
+          <h3>סדנה זמנית</h3>
+          <p class="intro">מוסיף כפתור מסלול נוסף בדף הראשי, בנוסף לקיימים.</p>
+          <div class="schedule-form">
+            <label for="workshop_name">שם הסדנה</label>
+            <input type="text" id="workshop_name" name="workshop_name" value="{{ settings.workshop_name }}">
+
+            <label for="workshop_amount">מחיר (₪)</label>
+            <input type="text" id="workshop_amount" name="workshop_amount" value="{{ settings.workshop_amount if settings.workshop_amount is not none else '' }}">
+
+            <label class="checkbox-label">
+              <input type="checkbox" name="workshop_enabled" {% if settings.workshop_enabled %}checked{% endif %}>
+              הצג את הסדנה בדף הראשי
+            </label>
+          </div>
+        </section>
+      </div>
+
+      <button type="submit" class="admin-save-btn">שמירה</button>
     </form>
 
-    <section class="admin-section">
-      <h3>תמונות הגלריה (עמוד הבית - "ברוכים הבאים הביתה")</h3>
-      <p class="intro">
-        מה שמופיע כאן זה בדיוק מה שמופיע באתר. העלאה/מחיקה לוקחת דקה-שתיים
-        עד שהיא מופיעה בפועל באתר החי (כמו כל עדכון אחר באתר).
-      </p>
+    <div class="tab-panel" data-tab-panel="gallery">
+      <section class="admin-section">
+        <h3>תמונות הגלריה (עמוד הבית - "ברוכים הבאים הביתה")</h3>
+        <p class="intro">
+          מה שמופיע כאן זה בדיוק מה שמופיע באתר. העלאה/מחיקה לוקחת דקה-שתיים
+          עד שהיא מופיעה בפועל באתר החי (כמו כל עדכון אחר באתר).
+        </p>
 
-      {% if gallery_status == "uploaded" %}
-      <p class="intro">✓ התמונה הועלתה. היא תופיע באתר תוך דקה-שתיים.</p>
-      {% elif gallery_status == "deleted" %}
-      <p class="intro">✓ התמונה נמחקה. השינוי יופיע באתר תוך דקה-שתיים.</p>
-      {% elif gallery_status == "no-file" %}
-      <p class="error">לא נבחר קובץ.</p>
-      {% elif gallery_status %}
-      <p class="error">{{ gallery_status }}</p>
-      {% endif %}
+        {% if gallery_status == "uploaded" %}
+        <p class="intro">✓ התמונה הועלתה. היא תופיע באתר תוך דקה-שתיים.</p>
+        {% elif gallery_status == "deleted" %}
+        <p class="intro">✓ התמונה נמחקה. השינוי יופיע באתר תוך דקה-שתיים.</p>
+        {% elif gallery_status == "no-file" %}
+        <p class="error">לא נבחר קובץ.</p>
+        {% elif gallery_status %}
+        <p class="error">{{ gallery_status }}</p>
+        {% endif %}
 
-      {% if gallery_error %}
-      <p class="error">{{ gallery_error }}</p>
-      {% else %}
-      <div class="gallery-grid">
-        {% for img in gallery_images %}
-        <div class="gallery-item">
-          <img src="{{ img.download_url }}" alt="{{ img.name }}">
-          <form method="POST" action="{{ url_for('admin_gallery_delete') }}"
-                onsubmit="return confirm('למחוק את התמונה הזו?');">
-            <input type="hidden" name="filename" value="{{ img.name }}">
-            <button type="submit" class="btn-delete-photo">מחיקה</button>
-          </form>
-        </div>
+        {% if gallery_error %}
+        <p class="error">{{ gallery_error }}</p>
         {% else %}
-        <p class="intro">אין עדיין תמונות בגלריה.</p>
-        {% endfor %}
-      </div>
+        <div class="gallery-grid">
+          {% for img in gallery_images %}
+          <div class="gallery-item">
+            <img src="{{ img.download_url }}" alt="{{ img.name }}">
+            <form method="POST" action="{{ url_for('admin_gallery_delete') }}"
+                  onsubmit="return confirm('למחוק את התמונה הזו?');">
+              <input type="hidden" name="filename" value="{{ img.name }}">
+              <button type="submit" class="btn-delete-photo">מחיקה</button>
+            </form>
+          </div>
+          {% else %}
+          <p class="intro">אין עדיין תמונות בגלריה.</p>
+          {% endfor %}
+        </div>
 
-      <form method="POST" action="{{ url_for('admin_gallery_upload') }}" enctype="multipart/form-data" class="gallery-upload-form">
-        <input type="file" name="photo" accept="image/png, image/jpeg, image/webp" multiple required>
-        <button type="submit">העלאת תמונה</button>
-      </form>
-      {% endif %}
-    </section>
+        <form method="POST" action="{{ url_for('admin_gallery_upload') }}" enctype="multipart/form-data" class="gallery-upload-form">
+          <input type="file" name="photo" accept="image/png, image/jpeg, image/webp" multiple required>
+          <button type="submit">העלאת תמונה</button>
+        </form>
+        {% endif %}
+      </section>
+    </div>
 
-    <section class="admin-section">
-      <h3>נרשמים</h3>
-      <p class="intro">
-        <a href="{{ sheet_url }}" target="_blank" rel="noopener">לפתיחת הגיליון המלא בגוגל שיטס</a>
-      </p>
-      <div class="table-scroll">
-        <table class="registrants-table">
-          <thead>
-            <tr>
-              <th>טלפון</th>
-              <th>שם</th>
-              <th>אימייל</th>
-              <th>מצב משפחתי</th>
-              <th>מסלול</th>
-              <th>סטטוס</th>
-              <th>סכום</th>
-              <th>כניסות נותרו</th>
-              <th>מזהה עסקה</th>
-              <th>נוצר בתאריך</th>
-              <th>עודכן בתאריך</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for r in registrants %}
-            <tr>
-              <td>{{ r.get('Phone', '') }}</td>
-              <td>{{ r.get('Name', '') }}</td>
-              <td>{{ r.get('Email', '') }}</td>
-              <td>{{ r.get('MaritalStatus', '') }}</td>
-              <td>{{ r.get('Tier', '') }}</td>
-              <td>{{ r.get('Status', '') }}</td>
-              <td>{{ r.get('Amount', '') }}</td>
-              <td>{{ r.get('EntriesRemaining', '') }}</td>
-              <td>{{ r.get('TransactionId', '') }}</td>
-              <td>{{ r.get('CreatedAt', '') }}</td>
-              <td>{{ r.get('UpdatedAt', '') }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </section>
+    <div class="tab-panel" data-tab-panel="registrants">
+      <section class="admin-section">
+        <h3>נרשמים</h3>
+        <p class="intro">
+          <a href="{{ sheet_url }}" target="_blank" rel="noopener">לפתיחת הגיליון המלא בגוגל שיטס</a>
+        </p>
+        <div class="table-scroll">
+          <table class="registrants-table">
+            <thead>
+              <tr>
+                <th>טלפון</th>
+                <th>שם</th>
+                <th>אימייל</th>
+                <th>מצב משפחתי</th>
+                <th>מסלול</th>
+                <th>סטטוס</th>
+                <th>סכום</th>
+                <th>כניסות נותרו</th>
+                <th>מזהה עסקה</th>
+                <th>נוצר בתאריך</th>
+                <th>עודכן בתאריך</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in registrants %}
+              <tr>
+                <td>{{ r.get('Phone', '') }}</td>
+                <td>{{ r.get('Name', '') }}</td>
+                <td>{{ r.get('Email', '') }}</td>
+                <td>{{ r.get('MaritalStatus', '') }}</td>
+                <td>{{ r.get('Tier', '') }}</td>
+                <td>{{ r.get('Status', '') }}</td>
+                <td>{{ r.get('Amount', '') }}</td>
+                <td>{{ r.get('EntriesRemaining', '') }}</td>
+                <td>{{ r.get('TransactionId', '') }}</td>
+                <td>{{ r.get('CreatedAt', '') }}</td>
+                <td>{{ r.get('UpdatedAt', '') }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
   </main>
+
+  <script>
+    (function () {
+      'use strict';
+      var tabs = document.querySelectorAll('.admin-tab');
+      var panels = document.querySelectorAll('.tab-panel');
+
+      function activate(name) {
+        tabs.forEach(function (t) {
+          var active = t.dataset.tab === name;
+          t.classList.toggle('active', active);
+          t.setAttribute('aria-selected', active ? 'true' : 'false');
+        });
+        panels.forEach(function (p) {
+          p.classList.toggle('active', p.dataset.tabPanel === name);
+        });
+      }
+
+      tabs.forEach(function (t) {
+        t.addEventListener('click', function () {
+          activate(t.dataset.tab);
+          history.replaceState(null, '', '#' + t.dataset.tab);
+        });
+      });
+
+      // Open directly to a tab via #hash (e.g. a link to /admin#gallery),
+      // and re-open the same tab after a form submit redirects back here
+      // (gallery upload/delete, or any future per-tab action that passes
+      // a status query param) - falls back to the first tab otherwise.
+      var initial = (location.hash || '').slice(1);
+      var validNames = Array.prototype.map.call(tabs, function (t) { return t.dataset.tab; });
+      if (!validNames.includes(initial)) {
+        {% if gallery_status is not none or gallery_error %}
+        initial = 'gallery';
+        {% else %}
+        initial = validNames[0];
+        {% endif %}
+      }
+      activate(initial);
+    })();
+  </script>
 </body>
 </html>

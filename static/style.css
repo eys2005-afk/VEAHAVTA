@@ -342,6 +342,48 @@ button[type="submit"]:hover {
   text-decoration: underline;
 }
 
+.admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 24px;
+  border-bottom: 2px solid #e5e0d8;
+}
+
+.admin-tab {
+  padding: 10px 18px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  border: none;
+  background: none;
+  color: #777;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+}
+
+.admin-tab:hover {
+  color: var(--primary-dark);
+}
+
+.admin-tab.active {
+  color: var(--primary-dark);
+  border-bottom-color: var(--primary);
+}
+
+.tab-panel {
+  display: none;
+}
+
+.tab-panel.active {
+  display: block;
+}
+
+.admin-save-btn {
+  margin-top: 8px;
+}
+
 .admin-section {
   margin-top: 32px;
 }
