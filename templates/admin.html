@@ -25,6 +25,7 @@
 
     <nav class="admin-tabs" role="tablist" aria-label="לשוניות ניהול">
       <button type="button" class="admin-tab active" data-tab="schedule" role="tab" aria-selected="true">שיעורים ולוח</button>
+      <button type="button" class="admin-tab" data-tab="content" role="tab" aria-selected="false">תוכן האתר</button>
       <button type="button" class="admin-tab" data-tab="settings" role="tab" aria-selected="false">הגדרות אתר</button>
       <button type="button" class="admin-tab" data-tab="gallery" role="tab" aria-selected="false">גלריה</button>
       <button type="button" class="admin-tab" data-tab="registrants" role="tab" aria-selected="false">נרשמים</button>
@@ -56,6 +57,31 @@
               placeholder="19:30 | קפה ופינוקים&#10;20:00 | שם השיעור | שם המעביר/ה">{{ board_values[loop.index0] }}</textarea>
             {% endfor %}
           </div>
+        </section>
+      </div>
+
+      <div class="tab-panel" data-tab-panel="content">
+        <section class="admin-section">
+          <h3>תוכן האתר (עמוד הבית)</h3>
+          <p class="intro">
+            כל כותרת, פסקה וציטוט שמוצגים בדף הבית - שינוי כאן משנה את הטקסט
+            בפועל באתר. <strong>לא</strong> כולל: קישורי ניווט, טקסט כפתורים
+            (וואטסאפ וכו'), שדות טופס יצירת הקשר, והבועה "22–38" (יש לה טיפול
+            מיוחד בקוד כדי שהמספרים יוצגו בכיוון הנכון).
+          </p>
+          {% for group_title, keys in content_groups %}
+          <h4 class="content-group-title">{{ group_title }}</h4>
+          <div class="schedule-form">
+            {% for key in keys %}
+            <label for="content_{{ key }}">{{ content_labels[key] }}</label>
+            {% if key in long_content_keys %}
+            <textarea id="content_{{ key }}" name="content_{{ key }}" rows="3">{{ content_values[key] }}</textarea>
+            {% else %}
+            <input type="text" id="content_{{ key }}" name="content_{{ key }}" value="{{ content_values[key] }}">
+            {% endif %}
+            {% endfor %}
+          </div>
+          {% endfor %}
         </section>
       </div>
 

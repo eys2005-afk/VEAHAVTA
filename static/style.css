@@ -388,6 +388,14 @@ button[type="submit"]:hover {
   margin-top: 32px;
 }
 
+.content-group-title {
+  margin: 24px 0 8px;
+  color: var(--primary-dark);
+  font-size: 1rem;
+  border-bottom: 1px solid #e5e0d8;
+  padding-bottom: 6px;
+}
+
 .schedule-form {
   display: flex;
   flex-direction: column;

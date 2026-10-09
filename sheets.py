@@ -79,7 +79,53 @@ EXTRA_SETTINGS_LABELS = [
 # positional) - the new rows simply read as empty until the first /admin
 # save writes them.
 BOARD_DAY_LABELS = [f"לוח הבית - {label}" for label in WEEKDAY_LABELS]
-SETTINGS_ROW_LABELS = WEEKDAY_LABELS + EXTRA_SETTINGS_LABELS + BOARD_DAY_LABELS
+
+# Homepage body copy ("תוכן האתר" in /admin) - every heading/paragraph/quote
+# a visitor reads, editable without touching code. (key, Hebrew sheet label).
+# Deliberately excludes: nav links, buttons tied to real behavior (data-wa/
+# data-event), form labels/placeholders, and the "22-38" age chip (has a
+# <bdi> bidi fix - free-text editing could silently reintroduce the
+# backwards-number bug it fixed). New fields only ever get *appended* here,
+# same reason as BOARD_DAY_LABELS above - keeps existing sheets positionally
+# stable.
+CONTENT_FIELDS = [
+    ("hero_title", "ראשי - כותרת"),
+    ("hero_subtitle", "ראשי - תת-כותרת"),
+    ("about_heading", "עלינו - כותרת"),
+    ("about_p1", "עלינו - פסקה 1 (אחרי \"ואהבת\" המודגש)"),
+    ("about_p2", "עלינו - פסקה 2"),
+    ("about_p3", "עלינו - פסקה 3"),
+    ("fits_title", "למי זה מתאים - כותרת"),
+    ("fit_chip_2", "למי זה מתאים - בועה 2"),
+    ("fit_chip_3", "למי זה מתאים - בועה 3"),
+    ("fit_chip_4", "למי זה מתאים - בועה 4"),
+    ("activities_heading", "מה קורה כאן - כותרת"),
+    ("card1_title", "כרטיס 1 - כותרת (שיעורי תורה)"),
+    ("card1_desc", "כרטיס 1 - תיאור"),
+    ("card2_title", "כרטיס 2 - כותרת (חברותא)"),
+    ("card2_desc", "כרטיס 2 - תיאור"),
+    ("card3_title", "כרטיס 3 - כותרת (סדנאות)"),
+    ("card3_desc", "כרטיס 3 - תיאור"),
+    ("card4_title", "כרטיס 4 - כותרת (שישי וחג)"),
+    ("card4_desc", "כרטיס 4 - תיאור"),
+    ("event_badge", "באנר הערב הקרוב - תגית"),
+    ("event_heading", "באנר הערב הקרוב - כותרת וטקסט כפתור"),
+    ("quote_text", "באנר הציטוט (וְאָהַבְתָּ)"),
+    ("friends_heading", "חברים מספרים - כותרת"),
+    ("testimonial1_quote", "המלצה 1 - ציטוט (אלכס)"),
+    ("testimonial1_name", "המלצה 1 - שם"),
+    ("testimonial2_quote", "המלצה 2 - ציטוט (סתיו)"),
+    ("testimonial2_name", "המלצה 2 - שם"),
+    ("board_heading", "הלוח - כותרת"),
+    ("board_sub", "הלוח - תת-כותרת"),
+    ("board_note", "הלוח - הערה (\"בואו לבקר...\")"),
+    ("contact_heading", "יצירת קשר - כותרת"),
+    ("contact_sub", "יצירת קשר - תת-כותרת"),
+    ("visit_heading", "כרטיס ביקור - כותרת (\"בואו לבקר\")"),
+]
+CONTENT_LABELS = [label for _key, label in CONTENT_FIELDS]
+
+SETTINGS_ROW_LABELS = WEEKDAY_LABELS + EXTRA_SETTINGS_LABELS + BOARD_DAY_LABELS + CONTENT_LABELS
 
 _client = None
 
@@ -157,6 +203,16 @@ def get_home_board():
     }
 
 
+def get_home_content():
+    """Homepage body copy: {field_key: raw_value}. A key missing/empty here
+    means "not set yet" - app.py fills in the original hardcoded text as a
+    fallback, same approach as get_home_board/DEFAULT_BOARD_TEXT, so a blank
+    Sheet (or one field someone clears by mistake) never leaves a hole on
+    the live page."""
+    values = _read_settings_rows()
+    return {key: values.get(label, "") for key, label in CONTENT_FIELDS}
+
+
 def get_site_settings():
     """Free-mode toggle + a single temporary workshop tier, both editable
     from /admin without a code change or redeploy."""
@@ -174,12 +230,24 @@ def get_site_settings():
     }
 
 
-def update_settings(names_by_label, free_mode, workshop_name, workshop_amount, workshop_enabled, board_by_label=None):
+def update_settings(
+    names_by_label,
+    free_mode,
+    workshop_name,
+    workshop_amount,
+    workshop_enabled,
+    board_by_label=None,
+    content_by_key=None,
+):
     """names_by_label: dict of Hebrew day label (WEEKDAY_LABELS) -> class name.
     board_by_label: dict of Hebrew day label -> the homepage board's raw
-    multiline text for that day; None preserves whatever is stored."""
+    multiline text for that day; None preserves whatever is stored.
+    content_by_key: dict of CONTENT_FIELDS key -> homepage copy text; None
+    preserves whatever is stored (same reasoning as board_by_label)."""
     if board_by_label is None:
         board_by_label = get_home_board()
+    if content_by_key is None:
+        content_by_key = get_home_content()
 
     ws = _get_settings_worksheet()
     row_values = {label: names_by_label.get(label, "") for label in WEEKDAY_LABELS}
@@ -189,6 +257,8 @@ def update_settings(names_by_label, free_mode, workshop_name, workshop_amount, w
     row_values[WORKSHOP_ENABLED_LABEL] = "כן" if workshop_enabled else "לא"
     for label, board_label in zip(WEEKDAY_LABELS, BOARD_DAY_LABELS):
         row_values[board_label] = board_by_label.get(label, "")
+    for key, label in CONTENT_FIELDS:
+        row_values[label] = content_by_key.get(key, "")
 
     end_row = 1 + len(SETTINGS_ROW_LABELS)
     values = [["הגדרה", "ערך"]] + [[label, row_values[label]] for label in SETTINGS_ROW_LABELS]

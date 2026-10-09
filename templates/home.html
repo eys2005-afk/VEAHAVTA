@@ -76,11 +76,8 @@
       </div>
       <div class="container hero-inner">
         <img class="hero-logo reveal" src="{{ url_for('static', filename='assets/logo.svg') }}" alt="ואהבת — יהדות ניגון ורוח">
-        <h1 class="reveal delay-1">בית לצעירים וצעירות שמבקשים<br class="br-desktop"> להתחבר, להתרגש ולהקשיב יותר פנימה</h1>
-        <p class="hero-sub reveal delay-2">
-          מקום חדש בלב רמת גן, שבו עוצרים רגע מהמרוץ, שואלים את שאלות החיים
-          ולומדים יהדות מתוך שמחה, ניגון והמון אהבה.
-        </p>
+        <h1 class="reveal delay-1">{{ content.hero_title }}</h1>
+        <p class="hero-sub reveal delay-2">{{ content.hero_subtitle }}</p>
         <div class="hero-cta reveal delay-3">
           <a href="#contact" class="btn btn-primary btn-lg">ספרו לי עוד</a>
           <a href="#" class="btn btn-outline btn-lg" data-wa>
@@ -105,26 +102,17 @@
         <div class="about-grid">
           <div class="about-text reveal">
             <span class="eyebrow">מי אנחנו</span>
-            <h2>ברוכים הבאים הביתה</h2>
+            <h2>{{ content.about_heading }}</h2>
             <div class="title-nikud" aria-hidden="true"><span class="tn-dot"></span><svg viewBox="0 0 40 34"><rect x="2" y="2" width="36" height="9" rx="4.5"/><path d="M15 11h10v10a5 5 0 0 1-10 0z"/></svg><span class="tn-dot"></span></div>
-            <p>
-              <strong>״ואהבת״</strong> הוא בית וקהילה לצעירים וצעירות שמבקשים לקחת פסק זמן,
-              לשאול את שאלות החיים — ולהקשיב למה שקורה בפנים.
-            </p>
-            <p>
-              אנחנו נפגשים ללימודי יהדות והעמקה ביסודות הנפש, מתוך מקום חופשי, שמח ולא מחייב.
-              בלי תוויות ובלי ציפיות — רק סקרנות, עומק ולב פתוח.
-            </p>
-            <p>
-              כאן מעמיקים, מכירים חברים חדשים ומקבלים כלים מעשיים להתחדשות והעצמה אישית —
-              בתוך קהילה משפחתית ואוהבת.
-            </p>
-            <h3 class="fits-title">למי זה מתאים?</h3>
+            <p><strong>״ואהבת״</strong> {{ content.about_p1 }}</p>
+            <p>{{ content.about_p2 }}</p>
+            <p>{{ content.about_p3 }}</p>
+            <h3 class="fits-title">{{ content.fits_title }}</h3>
             <ul class="fit-chips">
               <li>צעירים וצעירות <bdi>22–38</bdi> ללא רקע דתי</li>
-              <li>רווקים, רווקות וזוגות צעירים</li>
-              <li>חברים שמחפשים את הניגון שלהם</li>
-              <li>מי שאוהבים שיחה עמוקה באמת</li>
+              <li>{{ content.fit_chip_2 }}</li>
+              <li>{{ content.fit_chip_3 }}</li>
+              <li>{{ content.fit_chip_4 }}</li>
             </ul>
           </div>
           <figure class="about-photo reveal delay-2">
@@ -153,7 +141,7 @@
       <div class="container">
         <div class="section-head reveal">
           <span class="eyebrow">מה קורה כאן</span>
-          <h2>לב פתוח, קהילה לומדת ומפגש אמיתי</h2>
+          <h2>{{ content.activities_heading }}</h2>
           <div class="title-nikud" aria-hidden="true"><span class="tn-dot"></span><svg viewBox="0 0 40 34"><rect x="2" y="2" width="36" height="9" rx="4.5"/><path d="M15 11h10v10a5 5 0 0 1-10 0z"/></svg><span class="tn-dot"></span></div>
         </div>
         <div class="cards-grid">
@@ -161,30 +149,30 @@
             <div class="card-icon" aria-hidden="true">
               <svg viewBox="0 0 48 48"><path class="ic-t" d="M24 12c-4-3.4-9.5-4.5-15-4v28c5.5-.5 11 .6 15 4 4-3.4 9.5-4.5 15-4V8c-5.5-.5-11 .6-15 4Z" fill="none" stroke-width="2.6" stroke-linejoin="round"/><path class="ic-t" d="M24 12v28" fill="none" stroke-width="2.6"/><path class="ic-o" d="M13 17c2.5-.2 5 .2 7 1M13 23c2.5-.2 5 .2 7 1M28 18c2-.8 4.5-1.2 7-1M28 24c2-.8 4.5-1.2 7-1" fill="none" stroke-width="2.4" stroke-linecap="round"/></svg>
             </div>
-            <h3>שיעורי תורה</h3>
-            <p>לימוד חי ונוגע — פרשת שבוע, חסידות, מחשבת ישראל ויסודות הנפש. שיעורים שמדברים אל החיים עצמם.</p>
+            <h3>{{ content.card1_title }}</h3>
+            <p>{{ content.card1_desc }}</p>
           </article>
           <article class="card reveal delay-1">
             <div class="card-icon" aria-hidden="true">
               <svg viewBox="0 0 48 48"><path class="ic-t" d="M21 10H9a4 4 0 0 0-4 4v9a4 4 0 0 0 4 4h2v6l7-6h3a4 4 0 0 0 4-4v-9a4 4 0 0 0-4-4Z" fill="none" stroke-width="2.6" stroke-linejoin="round"/><path class="ic-o" d="M39 17h-8m0 0a4 4 0 0 0-4 4v7a4 4 0 0 0 4 4h6v5l6-5a4 4 0 0 0 3-3.9V21a4 4 0 0 0-4-4Z" fill="none" stroke-width="2.4" stroke-linejoin="round"/></svg>
             </div>
-            <h3>חברותא</h3>
-            <p>מפגש אחד על אחד, על כל מה שמעניין אותך. לומדים יחד, בקצב שלך, על השאלות שבוערות בך.</p>
+            <h3>{{ content.card2_title }}</h3>
+            <p>{{ content.card2_desc }}</p>
           </article>
           <article class="card reveal delay-2">
             <div class="card-icon" aria-hidden="true">
               <!-- דמות בישיבת יוגה/מדיטציה -->
               <svg viewBox="0 0 48 48"><g transform="translate(0 1.4)"><circle class="ic-t" cx="24" cy="9.8" r="4.4" fill="none" stroke-width="2.6"/><path class="ic-t" d="M24 14.2c-3 0-5 2-5.4 4.8M24 14.2c3 0 5 2 5.4 4.8" fill="none" stroke-width="2.6" stroke-linecap="round"/><path class="ic-t" d="M18.6 19c-2.6 2.4-4 5.5-4.2 9.2M29.4 19c2.6 2.4 4 5.5 4.2 9.2" fill="none" stroke-width="2.6" stroke-linecap="round"/><path class="ic-t" d="M24 15.6v11.8" fill="none" stroke-width="2.6" stroke-linecap="round"/><path class="ic-o" d="M24 28c-6.4 0-11.6 3.6-12.5 8.1-.2 1 .6 1.8 1.5 1.8h22c.9 0 1.7-.8 1.5-1.8C35.6 31.6 30.4 28 24 28Z" fill="none" stroke-width="2.4" stroke-linejoin="round"/><path class="ic-o" d="M19.8 37.9 24 33.4l4.2 4.5" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></g></svg>
             </div>
-            <h3>סדנאות והעצמה</h3>
-            <p>זוגיות, מדיטציה, שיטת ימימה ועוד — כלים מעשיים להתפתחות אישית, להתחדשות ולחיים מלאים יותר.</p>
+            <h3>{{ content.card3_title }}</h3>
+            <p>{{ content.card3_desc }}</p>
           </article>
           <article class="card reveal delay-3">
             <div class="card-icon" aria-hidden="true">
               <svg viewBox="0 0 48 48"><path class="ic-t" d="M16 20v14m16-14v14M8 42h32M8 34h32" fill="none" stroke-width="2.6" stroke-linecap="round"/><path class="ic-o" d="M16 14c2.5-2 2.5-5 0-8-2.5 3-2.5 6 0 8Zm16 0c2.5-2 2.5-5 0-8-2.5 3-2.5 6 0 8Z" fill="none" stroke-width="2.4" stroke-linejoin="round"/></svg>
             </div>
-            <h3>שישי וחג ביחד</h3>
-            <p>ארוחות שישי וחגים אצל משפחות הקהילה — שולחן ארוך, ניגונים, דברי תורה וטעם של בית.</p>
+            <h3>{{ content.card4_title }}</h3>
+            <p>{{ content.card4_desc }}</p>
           </article>
         </div>
       </div>
@@ -195,11 +183,11 @@
     <section class="event-band">
       <div class="container event-inner reveal">
         <div class="event-text">
-          <span class="event-badge">מתחדש כל שבוע</span>
-          <h2>בואו לערב הקרוב</h2>
+          <span class="event-badge">{{ content.event_badge }}</span>
+          <h2>{{ content.event_heading }}</h2>
         </div>
         <a class="btn btn-primary btn-lg event-cta" href="{{ url_for('register') }}" data-event>
-          בואו לערב הקרוב
+          {{ content.event_heading }}
           <svg class="icon-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M11.1 5.3 4.4 12l6.7 6.7 1.4-1.4L8.2 13H20v-2H8.2l4.3-4.3z"/></svg>
         </a>
       </div>
@@ -211,7 +199,7 @@
       <img class="quote-bg" src="{{ url_for('static', filename='images/learning.jpg') }}" alt="לימוד משותף בקהילת ואהבת" loading="lazy">
       <div class="quote-overlay">
         <blockquote class="reveal">
-          <p>וְאָהַבְתָּ</p>
+          <p>{{ content.quote_text }}</p>
         </blockquote>
       </div>
     </section>
@@ -221,19 +209,19 @@
       <div class="container">
         <div class="section-head reveal">
           <span class="eyebrow">חברים מספרים</span>
-          <h2>מי שכבר בפנים</h2>
+          <h2>{{ content.friends_heading }}</h2>
           <div class="title-nikud" aria-hidden="true"><span class="tn-dot"></span><svg viewBox="0 0 40 34"><rect x="2" y="2" width="36" height="9" rx="4.5"/><path d="M15 11h10v10a5 5 0 0 1-10 0z"/></svg><span class="tn-dot"></span></div>
         </div>
         <div class="friends-grid">
           <figure class="friend-card reveal">
-            <img src="{{ url_for('static', filename='images/alex.jpg') }}" alt="אלכס" loading="lazy">
-            <blockquote>״כל פעם שאני בא ל'ואהבת' התחושה הראשונית שלי היא שלא רק רוצים אותי שם, אלא שממש חיכו לי שאני אגיע. קהילה שהיא בית.״</blockquote>
-            <figcaption>אלכס</figcaption>
+            <img src="{{ url_for('static', filename='images/alex.jpg') }}" alt="{{ content.testimonial1_name }}" loading="lazy">
+            <blockquote>{{ content.testimonial1_quote }}</blockquote>
+            <figcaption>{{ content.testimonial1_name }}</figcaption>
           </figure>
           <figure class="friend-card reveal delay-1">
-            <img src="{{ url_for('static', filename='images/stav.jpg') }}" alt="סתיו" loading="lazy">
-            <blockquote>״ואהבת — לדעת שאתה לא לבד. הגעתי לואהבת ומשהו בי נפתח... הגעתי לקהילה בלי שיפוט של מה אני יודעת ומה אני לא יודעת, לקהילה מחבקת, משפחתית וקיבלתי כתף חמה. ממליצה לכל אחד ואחת להצטרף למשפחה!״</blockquote>
-            <figcaption>סתיו</figcaption>
+            <img src="{{ url_for('static', filename='images/stav.jpg') }}" alt="{{ content.testimonial2_name }}" loading="lazy">
+            <blockquote>{{ content.testimonial2_quote }}</blockquote>
+            <figcaption>{{ content.testimonial2_name }}</figcaption>
           </figure>
         </div>
       </div>
@@ -244,9 +232,9 @@
       <div class="container">
         <div class="section-head reveal">
           <span class="eyebrow">מה על הלוח</span>
-          <h2>קבועים ומתחדשים</h2>
+          <h2>{{ content.board_heading }}</h2>
           <div class="title-nikud" aria-hidden="true"><span class="tn-dot"></span><svg viewBox="0 0 40 34"><rect x="2" y="2" width="36" height="9" rx="4.5"/><path d="M15 11h10v10a5 5 0 0 1-10 0z"/></svg><span class="tn-dot"></span></div>
-          <p class="section-sub">המערכת השבועית הקבועה שלנו — ראשון, שלישי וחמישי, עם קפה פתוח בכל ערב.</p>
+          <p class="section-sub">{{ content.board_sub }}</p>
         </div>
         <div class="board-grid" id="boardGrid">
           {# הלוח נערך מ-/admin (נשמר בגוגל שיטס); אם הכל ריק או שהשיטס
@@ -270,7 +258,7 @@
           <p class="board-note">הלוח מתחדש ממש בקרוב — שווה לחזור לבדוק 🙂</p>
           {% endfor %}
         </div>
-        <p class="board-note reveal">בואו לבקר — מקסימום סתם נשב על קפה.</p>
+        <p class="board-note reveal">{{ content.board_note }}</p>
         <div class="coffee-doodle reveal delay-1" aria-hidden="true">
           <svg viewBox="0 0 64 54">
             <path class="cd-steam" d="M23 16.8c-2.4-2-2.4-3.9 0-5.9s2.4-3.9 0-5.9M32 15c-2.4-2-2.4-3.9 0-5.9s2.4-3.9 0-5.9M41 16.8c-2.4-2-2.4-3.9 0-5.9s2.4-3.9 0-5.9" fill="none" stroke-width="2.4" stroke-linecap="round"/>
@@ -287,9 +275,9 @@
       <div class="container">
         <div class="section-head reveal">
           <span class="eyebrow">בואו נכיר</span>
-          <h2>מחכים לכם בבית</h2>
+          <h2>{{ content.contact_heading }}</h2>
           <div class="title-nikud" aria-hidden="true"><span class="tn-dot"></span><svg viewBox="0 0 40 34"><rect x="2" y="2" width="36" height="9" rx="4.5"/><path d="M15 11h10v10a5 5 0 0 1-10 0z"/></svg><span class="tn-dot"></span></div>
-          <p class="section-sub">מלאו את הטופס ונחזור אליכם.</p>
+          <p class="section-sub">{{ content.contact_sub }}</p>
         </div>
         <div class="contact-grid">
           <form class="contact-form reveal" id="contactForm" novalidate>
@@ -333,7 +321,7 @@
               <img src="{{ url_for('static', filename='images/place-2.jpg') }}" alt="פינת הישיבה בבית ואהבת" loading="lazy">
             </figure>
             <div class="visit-body">
-              <h3>בואו לבקר</h3>
+              <h3>{{ content.visit_heading }}</h3>
               <p class="visit-address">
                 <svg class="icon-inline" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7.5 7.5 0 0 0-7.5 7.5c0 5.3 6.4 11.6 6.7 11.9a1.1 1.1 0 0 0 1.6 0c.3-.3 6.7-6.6 6.7-11.9A7.5 7.5 0 0 0 12 2Zm0 10.2a2.8 2.8 0 1 1 0-5.6 2.8 2.8 0 0 1 0 5.6Z"/></svg>
                 <a href="https://waze.com/ul?q=%D7%A2%D7%95%D7%96%D7%99%D7%90%D7%9C%2050%2C%20%D7%A8%D7%9E%D7%AA%20%D7%92%D7%9F&amp;navigate=yes" data-waze target="_blank" rel="noopener">עוזיאל 50, רמת גן</a>

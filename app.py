@@ -10,11 +10,13 @@ from flask_cors import CORS
 import gallery
 from nedarim import TIERS, build_iframe_transaction, build_payment_url, test_charge_amount
 from sheets import (
+    CONTENT_FIELDS,
     WEEKDAY_LABELS,
     WEEKDAY_PY_INDEX,
     find_registrant,
     get_all_registrants,
     get_home_board,
+    get_home_content,
     get_site_settings,
     get_weekly_schedule,
     update_settings,
@@ -147,6 +149,88 @@ def get_home_board_days():
             days.append({"day": f"יום {label}", "items": items})
     return days
 
+
+# Homepage body copy as it shipped with the imported community page -
+# fallback whenever a given field is empty/unreachable in the Sheet, same
+# idea as DEFAULT_BOARD_TEXT above but merged per-field (not all-or-nothing):
+# clearing one field in /admin falls back to just that field's original
+# text, not the whole page's copy.
+DEFAULT_CONTENT = {
+    "hero_title": "בית לצעירים וצעירות שמבקשים להתחבר, להתרגש ולהקשיב יותר פנימה",
+    "hero_subtitle": "מקום חדש בלב רמת גן, שבו עוצרים רגע מהמרוץ, שואלים את שאלות החיים ולומדים יהדות מתוך שמחה, ניגון והמון אהבה.",
+    "about_heading": "ברוכים הבאים הביתה",
+    "about_p1": "הוא בית וקהילה לצעירים וצעירות שמבקשים לקחת פסק זמן, לשאול את שאלות החיים — ולהקשיב למה שקורה בפנים.",
+    "about_p2": "אנחנו נפגשים ללימודי יהדות והעמקה ביסודות הנפש, מתוך מקום חופשי, שמח ולא מחייב. בלי תוויות ובלי ציפיות — רק סקרנות, עומק ולב פתוח.",
+    "about_p3": "כאן מעמיקים, מכירים חברים חדשים ומקבלים כלים מעשיים להתחדשות והעצמה אישית — בתוך קהילה משפחתית ואוהבת.",
+    "fits_title": "למי זה מתאים?",
+    "fit_chip_2": "רווקים, רווקות וזוגות צעירים",
+    "fit_chip_3": "חברים שמחפשים את הניגון שלהם",
+    "fit_chip_4": "מי שאוהבים שיחה עמוקה באמת",
+    "activities_heading": "לב פתוח, קהילה לומדת ומפגש אמיתי",
+    "card1_title": "שיעורי תורה",
+    "card1_desc": "לימוד חי ונוגע — פרשת שבוע, חסידות, מחשבת ישראל ויסודות הנפש. שיעורים שמדברים אל החיים עצמם.",
+    "card2_title": "חברותא",
+    "card2_desc": "מפגש אחד על אחד, על כל מה שמעניין אותך. לומדים יחד, בקצב שלך, על השאלות שבוערות בך.",
+    "card3_title": "סדנאות והעצמה",
+    "card3_desc": "זוגיות, מדיטציה, שיטת ימימה ועוד — כלים מעשיים להתפתחות אישית, להתחדשות ולחיים מלאים יותר.",
+    "card4_title": "שישי וחג ביחד",
+    "card4_desc": "ארוחות שישי וחגים אצל משפחות הקהילה — שולחן ארוך, ניגונים, דברי תורה וטעם של בית.",
+    "event_badge": "מתחדש כל שבוע",
+    "event_heading": "בואו לערב הקרוב",
+    "quote_text": "וְאָהַבְתָּ",
+    "friends_heading": "מי שכבר בפנים",
+    "testimonial1_quote": "״כל פעם שאני בא ל'ואהבת' התחושה הראשונית שלי היא שלא רק רוצים אותי שם, אלא שממש חיכו לי שאני אגיע. קהילה שהיא בית.״",
+    "testimonial1_name": "אלכס",
+    "testimonial2_quote": "״ואהבת — לדעת שאתה לא לבד. הגעתי לואהבת ומשהו בי נפתח... הגעתי לקהילה בלי שיפוט של מה אני יודעת ומה אני לא יודעת, לקהילה מחבקת, משפחתית וקיבלתי כתף חמה. ממליצה לכל אחד ואחת להצטרף למשפחה!״",
+    "testimonial2_name": "סתיו",
+    "board_heading": "קבועים ומתחדשים",
+    "board_sub": "המערכת השבועית הקבועה שלנו — ראשון, שלישי וחמישי, עם קפה פתוח בכל ערב.",
+    "board_note": "בואו לבקר — מקסימום סתם נשב על קפה.",
+    "contact_heading": "מחכים לכם בבית",
+    "contact_sub": "מלאו את הטופס ונחזור אליכם.",
+    "visit_heading": "בואו לבקר",
+}
+
+
+# Purely presentational grouping of CONTENT_FIELDS for /admin - mirrors the
+# homepage's own section order, so editing there matches what's on screen.
+CONTENT_GROUPS = [
+    ("אזור ראשי (Hero)", ["hero_title", "hero_subtitle"]),
+    ("עלינו / למי זה מתאים", ["about_heading", "about_p1", "about_p2", "about_p3", "fits_title", "fit_chip_2", "fit_chip_3", "fit_chip_4"]),
+    ("מה קורה כאן (4 הכרטיסים)", ["activities_heading", "card1_title", "card1_desc", "card2_title", "card2_desc", "card3_title", "card3_desc", "card4_title", "card4_desc"]),
+    ("באנר הערב הקרוב", ["event_badge", "event_heading"]),
+    ("באנר הציטוט", ["quote_text"]),
+    ("חברים מספרים", ["friends_heading", "testimonial1_quote", "testimonial1_name", "testimonial2_quote", "testimonial2_name"]),
+    ("הלוח", ["board_heading", "board_sub", "board_note"]),
+    ("יצירת קשר / כרטיס ביקור", ["contact_heading", "contact_sub", "visit_heading"]),
+]
+
+# Which CONTENT_FIELDS keys are long enough to need a <textarea> in /admin
+# rather than a single-line <input> - purely a form-rendering detail.
+LONG_CONTENT_KEYS = {
+    "hero_subtitle", "about_p1", "about_p2", "about_p3",
+    "card1_desc", "card2_desc", "card3_desc", "card4_desc",
+    "testimonial1_quote", "testimonial2_quote",
+    "board_sub", "board_note", "contact_sub",
+}
+
+
+def get_home_content_values():
+    """Homepage body copy, merged with DEFAULT_CONTENT per-field - an empty
+    or unreachable Sheet never leaves a blank heading/paragraph live. Used
+    by both the homepage and /admin's edit form (which should show exactly
+    what's actually live, not a blank field someone might mistake for
+    "nothing saved yet")."""
+    try:
+        stored = get_home_content()
+    except Exception:
+        stored = {}
+    return {
+        key: (stored.get(key) or "").strip() or default
+        for key, default in DEFAULT_CONTENT.items()
+    }
+
+
 # Per Nedarim Plus's official iframe docs: their CallBack always originates
 # from this IP - checked (not enforced yet) to guard against spoofing once
 # the callback is confirmed working end-to-end.
@@ -219,6 +303,7 @@ def index():
         "home.html",
         board_days=get_home_board_days(),
         gallery_images=gallery.local_image_filenames(),
+        content=get_home_content_values(),
     )
 
 
@@ -489,6 +574,10 @@ def admin_dashboard():
             for i, label in enumerate(WEEKDAY_LABELS)
         }
         workshop_amount = request.form.get("workshop_amount", "").strip()
+        content_by_key = {
+            key: request.form.get(f"content_{key}", "").strip()
+            for key, _label in CONTENT_FIELDS
+        }
         update_settings(
             names_by_label,
             free_mode=request.form.get("free_mode") == "on",
@@ -496,6 +585,7 @@ def admin_dashboard():
             workshop_amount=workshop_amount or None,
             workshop_enabled=request.form.get("workshop_enabled") == "on",
             board_by_label=board_by_label,
+            content_by_key=content_by_key,
         )
         return redirect(url_for("admin_dashboard"))
 
@@ -527,6 +617,10 @@ def admin_dashboard():
         day_values=day_values,
         board_values=board_values,
         settings=settings,
+        content_groups=CONTENT_GROUPS,
+        content_labels=dict(CONTENT_FIELDS),
+        content_values=get_home_content_values(),
+        long_content_keys=LONG_CONTENT_KEYS,
         registrants=get_all_registrants(),
         sheet_url=f"https://docs.google.com/spreadsheets/d/{os.environ.get('GOOGLE_SHEET_ID', '')}/edit",
         gallery_images=gallery_images,
