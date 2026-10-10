@@ -7,8 +7,10 @@ from urllib.parse import urlencode
 # EntriesRemaining=N on the registrant; returning with entries left checks
 # them in (decrementing the count) instead of charging again (see app.py).
 # "months": N on a recurring tier sets Nedarim's Tashlumim (number of
-# months to charge) - the registrant picks a commitment length (3/6/12) up
+# months to charge) - the registrant picks a commitment length (1-12) up
 # front rather than an open-ended standing order; see build_payment_params.
+MONTHLY_AMOUNT = 150
+
 TIERS = {
     "single": {
         "label": "ערב בודד",
@@ -24,31 +26,28 @@ TIERS = {
         "enabled": True,
         "entries": 3,
     },
-    "monthly_3": {
-        "label": "מנוי חודשי - 3 חודשים (הוראת קבע)",
-        "amount": 150,
-        "recurring": True,
-        "enabled": True,
-        "entries": None,
-        "months": 3,
-    },
-    "monthly_6": {
-        "label": "מנוי חודשי - 6 חודשים (הוראת קבע)",
-        "amount": 150,
-        "recurring": True,
-        "enabled": True,
-        "entries": None,
-        "months": 6,
-    },
-    "monthly_12": {
-        "label": "מנוי חודשי - 12 חודשים (הוראת קבע)",
-        "amount": 150,
-        "recurring": True,
-        "enabled": True,
-        "entries": None,
-        "months": 12,
-    },
 }
+
+def months_label(n):
+    """Hebrew month count with correct grammar - '1 חודש' (not '1
+    חודשים'), '2 חודשים' (not the dual 'חודשיים', to keep every option
+    reading as a plain number + unit), '3 חודשים' etc."""
+    return "חודש" if n == 1 else f"{n} חודשים"
+
+
+# One tier per commitment length (1-12 months) - generated rather than
+# hand-written so the full range is consistent (same amount/label pattern)
+# and adding e.g. an 18-month option later is a one-line range() change.
+for _months in range(1, 13):
+    TIERS[f"monthly_{_months}"] = {
+        "label": f"מנוי חודשי - {months_label(_months)} (הוראת קבע)",
+        "amount": MONTHLY_AMOUNT,
+        "recurring": True,
+        "enabled": True,
+        "entries": None,
+        "months": _months,
+    }
+del _months
 
 # Lowercase path + lowercase "mosad" param - verified against the real
 # Mosad ID (7016996): the capitalized "Online/?Mosad=" form throws a server

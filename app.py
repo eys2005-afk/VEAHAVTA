@@ -8,7 +8,7 @@ from flask import Flask, Response, jsonify, redirect, render_template, request, 
 from flask_cors import CORS
 
 import gallery
-from nedarim import TIERS, build_iframe_transaction, build_payment_url, test_charge_amount
+from nedarim import TIERS, build_iframe_transaction, build_payment_url, months_label, test_charge_amount
 from sheets import (
     CONTENT_FIELDS,
     WEEKDAY_LABELS,
@@ -309,11 +309,11 @@ def index():
 
 def get_display_tiers():
     """Tiers for the /register buttons, with the monthly durations
-    (monthly_3/6/12) collapsed into one card instead of three separate
-    buttons that all showed '₪150' - which made it look like 3, 6 and 12
-    months cost the same, when ₪150 is the *monthly* amount and the real
-    total differs. Clicking the monthly card now asks for a duration (see
-    register.html), with the total spelled out for each option."""
+    (monthly_1..monthly_12) collapsed into one card instead of twelve
+    separate buttons that'd all show '₪150' - which made it look like
+    every duration cost the same, when ₪150 is the *monthly* amount.
+    Clicking the monthly card now asks for a duration (see register.html),
+    labelled with correct Hebrew month grammar (months_label)."""
     tiers = get_active_tiers()
     monthly_keys = sorted(
         (k for k in tiers if k.startswith("monthly_")),
@@ -332,9 +332,8 @@ def get_display_tiers():
                     "options": [
                         {
                             "key": k,
-                            "months": tiers[k]["months"],
+                            "months_label": months_label(tiers[k]["months"]),
                             "amount": tiers[k]["amount"],
-                            "total": tiers[k]["amount"] * tiers[k]["months"],
                             "enabled": tiers[k]["enabled"],
                         }
                         for k in monthly_keys
