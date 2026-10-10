@@ -49,6 +49,10 @@ nedarim.py        tier config (including punch-card "entries") + Nedarim
 gallery.py        self-service "about" photo gallery for /admin - add/remove
                   photos via GitHub's Contents API (real commits), since
                   Render's own filesystem is ephemeral (see GITHUB_TOKEN above)
+notifications.py  best-effort WhatsApp notification to the client (Noa) on a
+                  new registration and on a successful payment, via Twilio's
+                  WhatsApp Sandbox (see TWILIO_* below) - a missing/failed
+                  send never blocks registration or the payment webhook
 templates/        home.html (community landing page), register.html (tier
                   buttons + phone modal), details.html (new-registrant
                   form), pay.html (embedded Nedarim Plus iframe),
@@ -100,6 +104,13 @@ See `.env.example`. In short:
   Without it, the gallery section shows an error instead of failing
   silently. `GITHUB_REPO`/`GITHUB_BRANCH` only need setting if this ever
   moves to a different repo/branch than `gallery.py`'s defaults.
+- `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_WHATSAPP_TO` - lets
+  the app WhatsApp Noa on a new registration and on a successful payment
+  (`notifications.py`), via Twilio's free WhatsApp Sandbox. Best-effort:
+  if any of these are unset, or the send fails, registration/payment still
+  complete normally - only the notification is skipped (logged, not
+  raised). `TWILIO_WHATSAPP_FROM` only needs setting after upgrading off
+  the shared Sandbox number to a real dedicated WhatsApp sender.
 
 ## Admin panel (`/admin`)
 
@@ -129,6 +140,12 @@ request, falling back to the plain static tiers if the sheet is unreachable:
   swipeable gallery (`static/images/gallery/`), without touching the repo.
   Needs `GITHUB_TOKEN` (see above); every change is a real commit, so it
   takes the usual minute-or-two to actually appear on the live site.
+- **WhatsApp notification counter** - how many `notify_whatsapp()` sends
+  have actually succeeded, ever (`sheets.get_whatsapp_sent_count()`), so
+  the client can see how much of Twilio's one-time (non-renewing) free
+  WhatsApp Sandbox quota is used without checking the Twilio Console
+  directly. Flags red past 80. Only counts sends the site itself made -
+  not any manual testing done straight in the Twilio Console.
 
 ## Pricing (per the client)
 

@@ -125,7 +125,16 @@ CONTENT_FIELDS = [
 ]
 CONTENT_LABELS = [label for _key, label in CONTENT_FIELDS]
 
-SETTINGS_ROW_LABELS = WEEKDAY_LABELS + EXTRA_SETTINGS_LABELS + BOARD_DAY_LABELS + CONTENT_LABELS
+# A running count of WhatsApp notifications actually sent from the site
+# (notifications.py) - lets /admin show how much of Twilio's one-time free
+# quota has been used, since that quota doesn't reset and Twilio's own
+# console is the only other place to see it. Appended last, same
+# positional-stability reasoning as BOARD_DAY_LABELS/CONTENT_LABELS above.
+WHATSAPP_SENT_LABEL = "התראות וואטסאפ שנשלחו (סה״כ)"
+
+SETTINGS_ROW_LABELS = (
+    WEEKDAY_LABELS + EXTRA_SETTINGS_LABELS + BOARD_DAY_LABELS + CONTENT_LABELS + [WHATSAPP_SENT_LABEL]
+)
 
 _client = None
 
@@ -259,10 +268,37 @@ def update_settings(
         row_values[board_label] = board_by_label.get(label, "")
     for key, label in CONTENT_FIELDS:
         row_values[label] = content_by_key.get(key, "")
+    # Not one of this form's own fields - preserve whatever's already
+    # there (notifications.py increments it directly, one cell at a time).
+    row_values[WHATSAPP_SENT_LABEL] = _read_settings_rows().get(WHATSAPP_SENT_LABEL, "")
 
     end_row = 1 + len(SETTINGS_ROW_LABELS)
     values = [["הגדרה", "ערך"]] + [[label, row_values[label]] for label in SETTINGS_ROW_LABELS]
     ws.update(range_name=f"A1:B{end_row}", values=values)
+
+
+def get_whatsapp_sent_count():
+    """How many WhatsApp notifications notifications.py has actually sent
+    from the site, ever - shown in /admin so the client can see how much
+    of Twilio's one-time (non-renewing) free quota is used, without having
+    to check the Twilio Console directly."""
+    values = _read_settings_rows()
+    try:
+        return int(values.get(WHATSAPP_SENT_LABEL, "") or 0)
+    except ValueError:
+        return 0
+
+
+def increment_whatsapp_sent_count():
+    """Call once per WhatsApp notification actually sent. Writes only this
+    one cell (not the full settings block) so it can't race with or get
+    overwritten by an unrelated /admin save happening around the same
+    time. Returns the new count."""
+    ws = _get_settings_worksheet()
+    new_count = get_whatsapp_sent_count() + 1
+    row = SETTINGS_ROW_LABELS.index(WHATSAPP_SENT_LABEL) + 2  # +1 header, +1 1-indexed
+    ws.update(range_name=f"B{row}", values=[[str(new_count)]])
+    return new_count
 
 
 def get_all_registrants():

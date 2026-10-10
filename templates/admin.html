@@ -111,6 +111,24 @@
             </label>
           </div>
         </section>
+
+        <section class="admin-section">
+          <h3>התראות וואטסאפ</h3>
+          {% if whatsapp_sent_count is none %}
+          <p class="error">לא ניתן לקרוא את המונה כרגע (בעיית חיבור לגיליון).</p>
+          {% else %}
+          <p class="intro{% if whatsapp_sent_count >= 80 %} error{% endif %}">
+            נשלחו <strong>{{ whatsapp_sent_count }}</strong> התראות מהאתר (הרשמות + תשלומים).
+            {% if whatsapp_sent_count >= 80 %}
+            מתקרבים למכסת ה-100 ההודעות החינמיות החד-פעמיות של Twilio - כדאי לבדוק שם אם צריך לשדרג.
+            {% endif %}
+          </p>
+          <p class="intro">
+            זה סופר רק הודעות שהאתר עצמו שלח - לא כולל בדיקות ידניות שעשיתם ישירות בקונסול של Twilio,
+            אז המספר כאן יכול להיות נמוך יותר מהמונה שם.
+          </p>
+          {% endif %}
+        </section>
       </div>
 
       <button type="submit" class="admin-save-btn">שמירה</button>

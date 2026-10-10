@@ -8,6 +8,7 @@ from flask import Flask, Response, jsonify, redirect, render_template, request, 
 from flask_cors import CORS
 
 import gallery
+import notifications
 from nedarim import TIERS, build_iframe_transaction, build_payment_url, months_label, test_charge_amount
 from sheets import (
     CONTENT_FIELDS,
@@ -19,6 +20,7 @@ from sheets import (
     get_home_content,
     get_site_settings,
     get_weekly_schedule,
+    get_whatsapp_sent_count,
     update_settings,
     upsert_registrant,
 )
@@ -447,6 +449,18 @@ def details():
         Tier=tier,
         Status="pending",
     )
+
+    try:
+        tier_label = tiers.get(tier, {}).get("label", tier)
+        notifications.notify_whatsapp(
+            f"📝 נרשם/ה חדש/ה באתר ואהבת\nשם: {name}\nטלפון: {phone}\nמסלול: {tier_label}"
+        )
+    except Exception:
+        # Belt and suspenders on top of notify_whatsapp's own internal
+        # try/except: nothing here - not even a bug in this message-building
+        # code - may ever stop a real registration from completing.
+        app.logger.exception("registration WhatsApp notification failed")
+
     return redirect(url_for("pay", phone=phone, tier=tier))
 
 
@@ -571,12 +585,30 @@ def webhook_nedarim():
         "TransactionId": transaction_id or "",
     }
 
+    tier_info = get_active_tiers().get(tier or "", {})
     if is_paid:
-        entries = get_active_tiers().get(tier or "", {}).get("entries")
-        if entries:
-            fields["EntriesRemaining"] = str(entries)
+        if tier_info.get("entries"):
+            fields["EntriesRemaining"] = str(tier_info["entries"])
+        # Nedarim's callback payload doesn't reliably include the charged
+        # amount (see this route's docstring - field names are still
+        # best-guess) - use our own tier price instead of leaving the
+        # registrant's Amount column blank for every real paid transaction.
+        if "amount" in tier_info:
+            fields["Amount"] = str(tier_info["amount"])
 
-    upsert_registrant(phone, **fields)
+    merged = upsert_registrant(phone, **fields)
+
+    if is_paid:
+        try:
+            notifications.notify_whatsapp(
+                f"💰 תשלום הושלם!\nשם: {merged.get('Name', '')}\nטלפון: {phone}\n"
+                f"מסלול: {tier_info.get('label', tier or '')}\nסכום: ₪{merged.get('Amount', '')}"
+            )
+        except Exception:
+            # The Sheet is already updated above regardless - this is only
+            # about not letting the notification step keep Nedarim Plus
+            # from getting its expected 200 OK for the callback.
+            app.logger.exception("payment WhatsApp notification failed")
 
     return jsonify({"ok": True})
 
@@ -649,6 +681,11 @@ def admin_dashboard():
         board_text = DEFAULT_BOARD_TEXT
     board_values = [board_text.get(label, "") for label in WEEKDAY_LABELS]
 
+    try:
+        whatsapp_sent_count = get_whatsapp_sent_count()
+    except Exception:
+        whatsapp_sent_count = None
+
     return render_template(
         "admin.html",
         weekday_labels=WEEKDAY_LABELS,
@@ -664,6 +701,7 @@ def admin_dashboard():
         gallery_images=gallery_images,
         gallery_error=gallery_error,
         gallery_status=request.args.get("gallery_status"),
+        whatsapp_sent_count=whatsapp_sent_count,
     )
 
 
