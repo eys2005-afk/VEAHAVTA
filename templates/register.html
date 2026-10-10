@@ -77,12 +77,14 @@
       {% if group.type == "monthly_group" %}
       <div id="duration-picker" class="duration-picker hidden">
         <p class="duration-title">לכמה חודשים?</p>
-        {% for opt in group.options %}
-        <label class="radio-pill{% if not opt.enabled %} disabled{% endif %}">
-          <input type="radio" name="duration" value="{{ opt.key }}" {% if not opt.enabled %}disabled{% endif %} required>
-          <span>{{ opt.months_label }}</span>
-        </label>
-        {% endfor %}
+        <div class="duration-options">
+          {% for opt in group.options %}
+          <label class="radio-pill{% if not opt.enabled %} disabled{% endif %}">
+            <input type="radio" name="duration" value="{{ opt.key }}" {% if not opt.enabled %}disabled{% endif %} required>
+            <span>{{ opt.months_label }}</span>
+          </label>
+          {% endfor %}
+        </div>
       </div>
       {% endif %}
       {% endfor %}

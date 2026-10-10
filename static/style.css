@@ -225,6 +225,8 @@ body {
   padding: 32px 24px;
   width: 90%;
   max-width: 360px;
+  max-height: 90vh;
+  overflow-y: auto;
   position: relative;
   text-align: center;
   box-shadow: 0 20px 60px rgba(11, 58, 64, 0.35);
@@ -260,6 +262,16 @@ body {
 .duration-title {
   font-weight: 600;
   margin: 0;
+}
+
+.duration-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-left: 4px;
+  margin-left: -4px;
 }
 
 .radio-pill {
