@@ -28,22 +28,42 @@
     {% endif %}
 
     <div class="tiers">
-      {% for key, tier in tiers.items() %}
+      {% for group in display_tiers %}
+      {% if group.type == "single" %}
       <button
-        class="tier-button{% if not tier.enabled %} disabled{% endif %}"
-        data-tier="{{ key }}"
-        {% if not tier.enabled %}disabled{% endif %}
+        class="tier-button{% if not group.tier.enabled %} disabled{% endif %}"
+        data-tier="{{ group.key }}"
+        data-type="single"
+        {% if not group.tier.enabled %}disabled{% endif %}
       >
-        <span class="tier-label">{{ tier.label }}</span>
-        {% if free_mode and tier.amount > 0 %}
+        <span class="tier-label">{{ group.tier.label }}</span>
+        {% if free_mode and group.tier.amount > 0 %}
         <span class="tier-amount tier-amount-free">
-          <span class="tier-amount-struck">₪{{ tier.amount }}</span>
+          <span class="tier-amount-struck">₪{{ group.tier.amount }}</span>
           <span class="tier-free-badge">חינם!</span>
         </span>
         {% else %}
-        <span class="tier-amount">₪{{ tier.amount }}</span>
+        <span class="tier-amount">₪{{ group.tier.amount }}</span>
         {% endif %}
       </button>
+      {% else %}
+      <button
+        class="tier-button{% if not group.enabled %} disabled{% endif %}"
+        id="monthly-group-button"
+        data-type="monthly_group"
+        {% if not group.enabled %}disabled{% endif %}
+      >
+        <span class="tier-label">{{ group.label }}</span>
+        {% if free_mode and group.amount > 0 %}
+        <span class="tier-amount tier-amount-free">
+          <span class="tier-amount-struck">₪{{ group.amount }}/חודש</span>
+          <span class="tier-free-badge">חינם!</span>
+        </span>
+        {% else %}
+        <span class="tier-amount">₪{{ group.amount }}/חודש</span>
+        {% endif %}
+      </button>
+      {% endif %}
       {% endfor %}
     </div>
   </main>
@@ -52,6 +72,21 @@
     <div class="modal-content">
       <button type="button" class="modal-close" id="modal-close">&times;</button>
       <h2>הזינו מספר טלפון</h2>
+
+      {% for group in display_tiers %}
+      {% if group.type == "monthly_group" %}
+      <div id="duration-picker" class="duration-picker hidden">
+        <p class="duration-title">לכמה חודשים?</p>
+        {% for opt in group.options %}
+        <label class="radio-pill{% if not opt.enabled %} disabled{% endif %}">
+          <input type="radio" name="duration" value="{{ opt.key }}" {% if not opt.enabled %}disabled{% endif %} required>
+          <span>{{ opt.months }} חודשים - ₪{{ opt.amount }}/חודש (סה״כ ₪{{ opt.total }})</span>
+        </label>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endfor %}
+
       <form id="phone-form">
         <input type="tel" id="phone-input" name="phone" placeholder="050-0000000" required>
         <input type="hidden" id="selected-tier" name="tier">
@@ -66,12 +101,29 @@
     const selectedTierInput = document.getElementById('selected-tier');
     const phoneForm = document.getElementById('phone-form');
     const phoneError = document.getElementById('phone-error');
+    const durationPicker = document.getElementById('duration-picker');
+    const durationRadios = document.querySelectorAll('input[name="duration"]');
 
     document.querySelectorAll('.tier-button').forEach((button) => {
       button.addEventListener('click', () => {
         if (button.disabled) return;
-        selectedTierInput.value = button.dataset.tier;
+        if (button.dataset.type === 'monthly_group') {
+          // Duration (and with it, the real tier key) isn't known yet -
+          // picked via the radios below, not assumed from the button.
+          selectedTierInput.value = '';
+          durationRadios.forEach((r) => { r.checked = false; });
+          if (durationPicker) durationPicker.classList.remove('hidden');
+        } else {
+          selectedTierInput.value = button.dataset.tier;
+          if (durationPicker) durationPicker.classList.add('hidden');
+        }
         modal.classList.remove('hidden');
+      });
+    });
+
+    durationRadios.forEach((radio) => {
+      radio.addEventListener('change', () => {
+        selectedTierInput.value = radio.value;
       });
     });
 
@@ -85,6 +137,12 @@
 
       const phone = document.getElementById('phone-input').value.trim();
       const tier = selectedTierInput.value;
+
+      if (!tier) {
+        phoneError.textContent = 'בחרו לכמה חודשים לפני שממשיכים';
+        phoneError.classList.remove('hidden');
+        return;
+      }
 
       try {
         const response = await fetch('/check-phone', {

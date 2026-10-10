@@ -307,6 +307,45 @@ def index():
     )
 
 
+def get_display_tiers():
+    """Tiers for the /register buttons, with the monthly durations
+    (monthly_3/6/12) collapsed into one card instead of three separate
+    buttons that all showed '₪150' - which made it look like 3, 6 and 12
+    months cost the same, when ₪150 is the *monthly* amount and the real
+    total differs. Clicking the monthly card now asks for a duration (see
+    register.html), with the total spelled out for each option."""
+    tiers = get_active_tiers()
+    monthly_keys = sorted(
+        (k for k in tiers if k.startswith("monthly_")),
+        key=lambda k: tiers[k]["months"],
+    )
+    groups = []
+    monthly_group_added = False
+    for key, tier in tiers.items():
+        if key.startswith("monthly_"):
+            if not monthly_group_added:
+                groups.append({
+                    "type": "monthly_group",
+                    "label": "מנוי חודשי (הוראת קבע)",
+                    "amount": tiers[monthly_keys[0]]["amount"],
+                    "enabled": any(tiers[k]["enabled"] for k in monthly_keys),
+                    "options": [
+                        {
+                            "key": k,
+                            "months": tiers[k]["months"],
+                            "amount": tiers[k]["amount"],
+                            "total": tiers[k]["amount"] * tiers[k]["months"],
+                            "enabled": tiers[k]["enabled"],
+                        }
+                        for k in monthly_keys
+                    ],
+                })
+                monthly_group_added = True
+            continue
+        groups.append({"type": "single", "key": key, "tier": tier})
+    return groups
+
+
 @app.route("/register")
 def register():
     # The original registration screen (tier buttons + phone modal) -
@@ -317,7 +356,7 @@ def register():
         free_mode_active = False
     return render_template(
         "register.html",
-        tiers=get_active_tiers(),
+        display_tiers=get_display_tiers(),
         class_name=get_class_name(),
         free_mode=free_mode_active,
     )

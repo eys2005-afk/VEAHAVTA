@@ -249,6 +249,54 @@ body {
   margin-top: 16px;
 }
 
+.duration-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+  text-align: right;
+}
+
+.duration-title {
+  font-weight: 600;
+  margin: 0;
+}
+
+.radio-pill {
+  display: block;
+  position: relative;
+}
+
+.radio-pill input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  cursor: pointer;
+}
+
+.radio-pill span {
+  display: block;
+  padding: 10px 14px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+.radio-pill input:checked + span {
+  border-color: var(--primary);
+  background: rgba(30, 162, 167, 0.1);
+  font-weight: 600;
+}
+
+.radio-pill input:focus-visible + span {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.radio-pill.disabled span {
+  opacity: 0.5;
+}
+
 input[type="tel"],
 input[type="text"],
 input[type="email"],
