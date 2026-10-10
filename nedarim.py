@@ -6,6 +6,9 @@ from urllib.parse import urlencode
 # "entries": N marks a tier as a multi-visit punch card - paying for it sets
 # EntriesRemaining=N on the registrant; returning with entries left checks
 # them in (decrementing the count) instead of charging again (see app.py).
+# "months": N on a recurring tier sets Nedarim's Tashlumim (number of
+# months to charge) - the registrant picks a commitment length (3/6/12) up
+# front rather than an open-ended standing order; see build_payment_params.
 TIERS = {
     "single": {
         "label": "ערב בודד",
@@ -21,12 +24,29 @@ TIERS = {
         "enabled": True,
         "entries": 3,
     },
-    "monthly": {
-        "label": "מנוי חודשי (הוראת קבע)",
+    "monthly_3": {
+        "label": "מנוי חודשי - 3 חודשים (הוראת קבע)",
         "amount": 150,
         "recurring": True,
         "enabled": True,
         "entries": None,
+        "months": 3,
+    },
+    "monthly_6": {
+        "label": "מנוי חודשי - 6 חודשים (הוראת קבע)",
+        "amount": 150,
+        "recurring": True,
+        "enabled": True,
+        "entries": None,
+        "months": 6,
+    },
+    "monthly_12": {
+        "label": "מנוי חודשי - 12 חודשים (הוראת קבע)",
+        "amount": 150,
+        "recurring": True,
+        "enabled": True,
+        "entries": None,
+        "months": 12,
     },
 }
 
@@ -79,9 +99,10 @@ def build_payment_params(phone, tier_key, tier=None):
     if tier["recurring"]:
         # Per the official PostNedarim parameter table: for PaymentType=HK,
         # Tashlumim is "מספר חודשים לחיוב (ללא הגבלה יש להשאיר ריק)" - number
-        # of months to charge, leave empty for unlimited. An ongoing monthly
-        # subscription (charged until cancelled) is exactly "unlimited".
-        params["Tashlumim"] = ""
+        # of months to charge, leave empty for unlimited. Each monthly tier
+        # now picks a fixed commitment length (see TIERS' "months") rather
+        # than an open-ended standing order.
+        params["Tashlumim"] = str(tier["months"]) if tier.get("months") else ""
 
     return params
 
@@ -118,9 +139,9 @@ def build_iframe_transaction(phone, tier_key, name="", email="", tier=None):
         "Zeout": "",
         "PaymentType": "HK" if tier["recurring"] else "Ragil",
         "Amount": test_charge_amount() or tier["amount"],
-        # See build_payment_params: empty Tashlumim on PaymentType=HK means
-        # unlimited months (charged every month until cancelled).
-        "Tashlumim": "" if tier["recurring"] else "1",
+        # See build_payment_params: Tashlumim is the fixed number of months
+        # to charge for a recurring tier (empty would mean unlimited).
+        "Tashlumim": (str(tier["months"]) if tier.get("months") else "") if tier["recurring"] else "1",
         "Currency": "1",
         "FirstName": name or "",
         "LastName": "",

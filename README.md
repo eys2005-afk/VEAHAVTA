@@ -136,7 +136,7 @@ request, falling back to the plain static tiers if the sheet is unreachable:
 |--------------|-------------|-----------------------------------------------|
 | Single       | ₪30/evening |                                                |
 | Punch card   | ₪75/3 entries | Replaces the old time-based "weekly" tier - see "Multi-visit tracking" below |
-| Monthly      | ₪150/month (הוראת קבע) | Confirmed 2026-08-11, enabled |
+| Monthly      | ₪150/month (הוראת קבע) | Registrant picks a 3/6/12-month commitment at signup (`monthly_3`/`monthly_6`/`monthly_12` in `TIERS`) - not an open-ended standing order |
 
 ### Multi-visit tracking (punch cards)
 
@@ -170,6 +170,12 @@ collected during registration.
 
 ## Resolved
 
+- **Monthly subscription (הוראת קבע) commitment length**: the client
+  wanted a fixed choice (3/6/12 months), not an open-ended standing
+  order - split the single "monthly" tier into `monthly_3`/`monthly_6`/
+  `monthly_12` in `nedarim.py`'s `TIERS`, each with its own `months`
+  value feeding Nedarim's `Tashlumim` parameter (previously always sent
+  empty = unlimited, charged until manually cancelled).
 - **Test-mode pricing turned off**: `NEDARIM_TEST_AMOUNT` removed from
   Render (confirmed by the client, 2026-10-08) - real charges now go
   through at each tier's actual price instead of being forced to ₪1.
@@ -271,10 +277,5 @@ and reflect whatever host is used, so they need no per-domain edit.
    `numericise_ignore` fix (see "Resolved") each appended a new row
    instead of updating one; the Sheet has several old rows per test phone
    number that are safe to clean up manually whenever convenient.
-3. **Monthly subscription (הוראת קבע) price + recurring parameter** - price
-   wasn't given in the client's brief; the docs show a `PaymentType: 'HK'`
-   mode with its own `Amount`/`Tashlumim` meaning (monthly amount / number
-   of months), which `build_iframe_transaction()` already switches to for
-   the monthly tier - still disabled until the price is confirmed.
-4. **Exact class/session names** - the client sets these weekly from
+3. **Exact class/session names** - the client sets these weekly from
    `/admin` now; no code change needed once they start filling it in.
