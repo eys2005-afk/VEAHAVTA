@@ -453,7 +453,8 @@ def details():
     try:
         tier_label = tiers.get(tier, {}).get("label", tier)
         notifications.notify_whatsapp(
-            f"📝 נרשם/ה חדש/ה באתר ואהבת\nשם: {name}\nטלפון: {phone}\nמסלול: {tier_label}"
+            "TWILIO_CONTENT_SID_REGISTRATION",
+            [name, phone, tier_label],
         )
     except Exception:
         # Belt and suspenders on top of notify_whatsapp's own internal
@@ -601,8 +602,13 @@ def webhook_nedarim():
     if is_paid:
         try:
             notifications.notify_whatsapp(
-                f"💰 תשלום הושלם!\nשם: {merged.get('Name', '')}\nטלפון: {phone}\n"
-                f"מסלול: {tier_info.get('label', tier or '')}\nסכום: ₪{merged.get('Amount', '')}"
+                "TWILIO_CONTENT_SID_PAYMENT",
+                [
+                    merged.get("Name", ""),
+                    phone,
+                    tier_info.get("label", tier or ""),
+                    str(merged.get("Amount", "")),
+                ],
             )
         except Exception:
             # The Sheet is already updated above regardless - this is only

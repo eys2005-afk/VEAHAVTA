@@ -106,11 +106,42 @@ See `.env.example`. In short:
   moves to a different repo/branch than `gallery.py`'s defaults.
 - `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_WHATSAPP_TO` - lets
   the app WhatsApp Noa on a new registration and on a successful payment
-  (`notifications.py`), via Twilio's free WhatsApp Sandbox. Best-effort:
-  if any of these are unset, or the send fails, registration/payment still
-  complete normally - only the notification is skipped (logged, not
-  raised). `TWILIO_WHATSAPP_FROM` only needs setting after upgrading off
-  the shared Sandbox number to a real dedicated WhatsApp sender.
+  (`notifications.py`). Best-effort: if any of these (or the matching
+  Content SID below) are unset, or the send fails, registration/payment
+  still complete normally - only the notification is skipped (logged, not
+  raised). `TWILIO_WHATSAPP_FROM` only needs setting if the sender number
+  ever changes.
+- `TWILIO_CONTENT_SID_REGISTRATION` / `TWILIO_CONTENT_SID_PAYMENT` - the
+  approved Content SID (`HX...`) for each WhatsApp notification template.
+  WhatsApp's Business Messaging policy requires a business-initiated
+  message like these (Noa never messages first, so there's no open 24h
+  session window) to use a pre-approved template - a plain freeform body
+  is rejected outright with `ContentSid Required` (confirmed live on
+  Render 2026-10-10). To (re)create a template: Twilio Console → Messaging
+  → Content Template Builder → new template, category **Utility**,
+  language Hebrew, and one of the bodies below (each `{{N}}` needs a
+  sample value to submit for WhatsApp/Meta approval - approval usually
+  takes anywhere from minutes to about a day). Once approved, copy its
+  Content SID into the matching Render env var above.
+
+  Registration template body (variables in order: name, phone, tier
+  label):
+  ```
+  📝 נרשם/ה חדש/ה באתר ואהבת
+  שם: {{1}}
+  טלפון: {{2}}
+  מסלול: {{3}}
+  ```
+
+  Payment template body (variables in order: name, phone, tier label,
+  amount in ₪ without the symbol):
+  ```
+  💰 תשלום הושלם!
+  שם: {{1}}
+  טלפון: {{2}}
+  מסלול: {{3}}
+  סכום: ₪{{4}}
+  ```
 
 ## Admin panel (`/admin`)
 
