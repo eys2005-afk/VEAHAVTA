@@ -1,13 +1,35 @@
 import json
 import os
+import time
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import gspread
 from google.oauth2.service_account import Credentials
+from gspread.exceptions import APIError
 from gspread.utils import rowcol_to_a1
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+
+# Retry a gspread call a few times, with a short backoff, specifically for
+# Google's 429 "Quota exceeded... Read requests per minute" error - the
+# quota resets every minute, so a brief wait often succeeds on retry.
+# Confirmed as the real cause of a 2026-10-13 incident: a ₪75 payment that
+# charged successfully on Nedarim Plus's side but never got recorded here,
+# because Nedarim's webhook callback hit this quota and got a 500 back,
+# with no retry. Used on the registrant read/write path specifically,
+# since that's the one a payment webhook depends on.
+_QUOTA_RETRY_DELAYS = (1, 2, 4)
+
+
+def _call_with_quota_retry(fn, *args, **kwargs):
+    for i, delay in enumerate(_QUOTA_RETRY_DELAYS):
+        try:
+            return fn(*args, **kwargs)
+        except APIError as e:
+            if "429" not in str(e) or i == len(_QUOTA_RETRY_DELAYS) - 1:
+                raise
+            time.sleep(delay)
 
 ISRAEL_TZ = ZoneInfo("Asia/Jerusalem")
 
@@ -157,16 +179,30 @@ def get_sheets_client():
     return _client
 
 
-def _get_worksheet():
+_sheet = None
+
+
+def _get_sheet():
+    """Lazily open and cache the Spreadsheet object itself (not just the
+    authorized client) - open_by_key() is its own Sheets API read call, so
+    re-running it on every single _get_worksheet()/_get_settings_worksheet()
+    call (as before) doubled the read-quota cost of everything in this
+    file for no benefit, since the sheet ID never changes at runtime."""
+    global _sheet
+    if _sheet is not None:
+        return _sheet
     client = get_sheets_client()
     sheet_id = os.environ["GOOGLE_SHEET_ID"]
-    return client.open_by_key(sheet_id).sheet1
+    _sheet = client.open_by_key(sheet_id)
+    return _sheet
+
+
+def _get_worksheet():
+    return _get_sheet().sheet1
 
 
 def _get_settings_worksheet():
-    client = get_sheets_client()
-    sheet_id = os.environ["GOOGLE_SHEET_ID"]
-    sh = client.open_by_key(sheet_id)
+    sh = _get_sheet()
     end_row = 1 + len(SETTINGS_ROW_LABELS)
     try:
         ws = sh.worksheet(SETTINGS_SHEET_TITLE)
@@ -185,13 +221,36 @@ def _get_settings_worksheet():
         return ws
 
 
+# get_weekly_schedule/get_home_board/get_home_content/get_site_settings
+# each call this independently - before this cache, a single homepage or
+# /admin request could trigger 4-5 *separate* full reads of the settings
+# tab, each preceded by its own sheet-open call. Under any real concurrent
+# traffic that alone could exceed Google's default 60-reads/minute quota
+# (confirmed: this is exactly what caused /admin to 500 repeatedly on
+# 2026-10-13, and contributed to the same day's payment-webhook 500 - see
+# _call_with_quota_retry above). A short TTL collapses all of those into
+# one real read per window; update_settings/increment_whatsapp_sent_count
+# clear it immediately after a write so the client always sees their own
+# change right away rather than waiting out the TTL.
+_SETTINGS_CACHE_TTL = 20
+_settings_cache = {"values": None, "fetched_at": 0.0}
+
+
 def _read_settings_rows():
     """Return {row_label: value} for every row in SETTINGS_ROW_LABELS."""
+    now = time.monotonic()
+    cached = _settings_cache["values"]
+    if cached is not None and now - _settings_cache["fetched_at"] < _SETTINGS_CACHE_TTL:
+        return cached
+
     ws = _get_settings_worksheet()
-    rows = ws.get_all_values()[1:]  # skip header row
+    rows = _call_with_quota_retry(ws.get_all_values)[1:]  # skip header row
     values = {}
     for i, label in enumerate(SETTINGS_ROW_LABELS):
         values[label] = rows[i][1] if i < len(rows) and len(rows[i]) > 1 else ""
+
+    _settings_cache["values"] = values
+    _settings_cache["fetched_at"] = now
     return values
 
 
@@ -275,6 +334,7 @@ def update_settings(
     end_row = 1 + len(SETTINGS_ROW_LABELS)
     values = [["הגדרה", "ערך"]] + [[label, row_values[label]] for label in SETTINGS_ROW_LABELS]
     ws.update(range_name=f"A1:B{end_row}", values=values)
+    _settings_cache["values"] = None
 
 
 def get_whatsapp_sent_count():
@@ -298,16 +358,15 @@ def increment_whatsapp_sent_count():
     new_count = get_whatsapp_sent_count() + 1
     row = SETTINGS_ROW_LABELS.index(WHATSAPP_SENT_LABEL) + 2  # +1 header, +1 1-indexed
     ws.update(range_name=f"B{row}", values=[[str(new_count)]])
+    _settings_cache["values"] = None
     return new_count
 
 
 def get_all_registrants():
     """All registrant rows (English-keyed dicts), for the admin dashboard."""
     ws = _get_worksheet()
-    return [
-        {_LABEL_TO_KEY.get(k, k): v for k, v in row.items()}
-        for row in ws.get_all_records(numericise_ignore=["all"])
-    ]
+    records = _call_with_quota_retry(ws.get_all_records, numericise_ignore=["all"])
+    return [{_LABEL_TO_KEY.get(k, k): v for k, v in row.items()} for row in records]
 
 
 def _normalize_phone(phone):
@@ -339,7 +398,7 @@ def find_registrant(phone):
     /pay lookup came back empty and Nedarim Plus kept rejecting the
     transaction for a "missing" name that was never actually missing."""
     ws = _get_worksheet()
-    records = ws.get_all_records(numericise_ignore=["all"])
+    records = _call_with_quota_retry(ws.get_all_records, numericise_ignore=["all"])
     target = _normalize_phone(phone)
     match = None
     for i, raw_row in enumerate(records, start=2):  # row 1 is the header
@@ -370,7 +429,7 @@ def upsert_registrant(phone, **fields):
     existing = find_registrant(phone)
     now = _now_str()
 
-    actual_headers = ws.row_values(1)
+    actual_headers = _call_with_quota_retry(ws.row_values, 1)
     col_fields = [_LABEL_TO_KEY.get(h, h) for h in actual_headers]
 
     if existing:
@@ -380,7 +439,7 @@ def upsert_registrant(phone, **fields):
         merged["UpdatedAt"] = now
         values = [merged.get(field, "") for field in col_fields]
         end_cell = rowcol_to_a1(row_number, len(col_fields))
-        ws.update(range_name=f"A{row_number}:{end_cell}", values=[values])
+        _call_with_quota_retry(ws.update, range_name=f"A{row_number}:{end_cell}", values=[values])
         return merged
 
     merged = {h: "" for h in HEADERS}
@@ -389,5 +448,5 @@ def upsert_registrant(phone, **fields):
     merged["CreatedAt"] = now
     merged["UpdatedAt"] = now
     values = [merged.get(field, "") for field in col_fields]
-    ws.append_row(values)
+    _call_with_quota_retry(ws.append_row, values)
     return merged
