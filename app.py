@@ -102,8 +102,6 @@ def get_active_tiers():
     return tiers
 
 
-MARITAL_STATUSES = ["רווק/ה", "בזוגיות", "נשוי/אה"]
-
 # The homepage weekly board as it shipped with the imported community page
 # (previously hardcoded in static/home.js). Used as the fallback whenever
 # the Sheet-stored board (editable from /admin) is empty or unreachable, so
@@ -409,17 +407,14 @@ def details():
             phone=phone,
             tier=tier,
             tiers=tiers,
-            marital_statuses=MARITAL_STATUSES,
             name="",
             email="",
-            marital_status="",
         )
 
     phone = request.form.get("phone")
     tier = request.form.get("tier")
     name = request.form.get("name")
     email = request.form.get("email")
-    marital_status = request.form.get("marital_status")
 
     # A plain data-quality check (real registrant records) - NOT a Nedarim
     # Plus requirement. Their own reference implementation (sample2.html)
@@ -429,7 +424,7 @@ def details():
     # build_iframe_transaction) - just a coincidentally-matching error text.
     has_full_name = name and len(name.split()) >= 2
 
-    if not phone or not tier or not name or not email or not marital_status or not has_full_name:
+    if not phone or not tier or not name or not email or not has_full_name:
         error = "נא למלא את כל השדות"
         if name and not has_full_name:
             error = "נא להזין שם פרטי ושם משפחה (לא רק שם אחד)"
@@ -441,10 +436,8 @@ def details():
             phone=phone,
             tier=tier,
             tiers=tiers,
-            marital_statuses=MARITAL_STATUSES,
             name=name or "",
             email=email or "",
-            marital_status=marital_status or "",
             error=error,
         )
 
@@ -452,7 +445,6 @@ def details():
         phone,
         Name=name,
         Email=email,
-        MaritalStatus=marital_status,
         Tier=tier,
         Status="pending",
     )

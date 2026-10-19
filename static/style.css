@@ -365,7 +365,10 @@ button[type="submit"]:hover {
 .secure-note {
   font-size: 0.85rem;
   font-weight: normal;
-  color: #777;
+  /* Sits inside the white-text submit button (see button[type="submit"]) -
+     #777 was legible on the page's own light background, but nearly
+     invisible against the teal button gradient it's actually rendered on. */
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .admin-container {
