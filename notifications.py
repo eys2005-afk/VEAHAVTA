@@ -1,82 +1,88 @@
-"""WhatsApp notifications to the client (Noa) via Twilio, on new
-registrations and successful payments - best-effort only: a failure here
-must never break registration or the payment webhook, so notify_whatsapp()
-catches everything itself and just returns False, rather than raising.
+"""WhatsApp notifications to the client (Noa) via Meta's WhatsApp Cloud API
+directly (not Twilio - see git history for that version, abandoned
+2026-10 because it needed a paid Twilio account just to register a
+Sender), on new registrations and successful payments - best-effort
+only: a failure here must never break registration or the payment
+webhook, so notify_whatsapp() catches everything itself and just
+returns False, rather than raising.
 
 Needs three Render env vars:
-- TWILIO_ACCOUNT_SID
-- TWILIO_AUTH_TOKEN
-- TWILIO_WHATSAPP_TO - the recipient, e.g. whatsapp:+972501234567
-  (a bare +972... is accepted too; the whatsapp: prefix is added if
-  missing)
+- WHATSAPP_PHONE_NUMBER_ID - the sending number's Phone Number ID (not
+  the phone number itself), from the Meta app's WhatsApp API Setup page.
+- WHATSAPP_ACCESS_TOKEN - a permanent token for a System User with
+  whatsapp_business_messaging + whatsapp_business_management access to
+  that WhatsApp Business Account (Business Settings -> System Users ->
+  Generate New Token, expiration "Never") - NOT the temporary 24h token
+  the API Setup page's own "Generate access token" button gives, which
+  would silently stop working a day after deploy.
+- WHATSAPP_TO - the recipient (Noa), digits only with country code, e.g.
+  972501234567 (no +, no whatsapp: prefix - this is Meta's own API, not
+  Twilio's).
 
-Sends go through a pre-approved WhatsApp Content Template (content_sid +
-content_variables), NOT a freeform body string. Confirmed live on Render
-2026-10-10: WhatsApp's Business Messaging policy requires a business-
-initiated notification like these (the recipient never messaged first, so
-there's no open 24h session window) to use an approved template - a plain
-body= send is rejected outright with "ContentSid Required", regardless of
-whether this is the Sandbox or a real WhatsApp sender. Each call site
-passes the Render env var name holding its template's approved Content
-SID (e.g. TWILIO_CONTENT_SID_REGISTRATION, TWILIO_CONTENT_SID_PAYMENT) -
-see README for how to create/approve a template and the exact wording
-used here.
-
-DEFAULT_WHATSAPP_FROM below is a real WhatsApp sender already set up for
-this account (not the generic shared Twilio Sandbox number) - override it
-with TWILIO_WHATSAPP_FROM only if that sender ever changes.
+Sends go through a pre-approved WhatsApp Message Template (name +
+language + body parameters), NOT a freeform text message - same
+underlying WhatsApp Business Messaging policy reason as the old Twilio
+integration: a business-initiated notification like these (the recipient
+never messaged first, so there's no open 24h session window) requires an
+approved template. Each call site passes the template's name directly
+(e.g. "registration_notification", "payment_notification") - see README
+for the exact wording submitted for approval in WhatsApp Manager, and
+their language is Hebrew ("he").
 """
-import json
 import logging
 import os
 
+import requests
+
 logger = logging.getLogger(__name__)
 
-DEFAULT_WHATSAPP_FROM = "whatsapp:+972535634674"
+GRAPH_API_VERSION = "v21.0"
 
 
-def _whatsapp_number(raw):
-    raw = raw.strip()
-    return raw if raw.startswith("whatsapp:") else f"whatsapp:{raw}"
-
-
-def notify_whatsapp(content_sid_env, variables):
-    """Best-effort WhatsApp send via a pre-approved Content Template.
+def notify_whatsapp(template_name, variables):
+    """Best-effort WhatsApp send via a pre-approved Message Template.
     Returns True on success, False on anything else (missing config,
-    Twilio error, network issue) - callers don't need to wrap this in
+    Meta API error, network issue) - callers don't need to wrap this in
     their own try/except.
 
-    `content_sid_env` - name of the Render env var holding the approved
-    template's Content SID (set once the template is approved in Twilio's
-    Content Template Builder - see README).
+    `template_name` - the approved template's name in WhatsApp Manager.
     `variables` - ordered list of strings filling the template's {{1}},
-    {{2}}, ... placeholders in order."""
-    account_sid = os.environ.get("TWILIO_ACCOUNT_SID", "").strip()
-    auth_token = os.environ.get("TWILIO_AUTH_TOKEN", "").strip()
-    to_raw = os.environ.get("TWILIO_WHATSAPP_TO", "").strip()
-    from_raw = os.environ.get("TWILIO_WHATSAPP_FROM", DEFAULT_WHATSAPP_FROM).strip()
-    content_sid = os.environ.get(content_sid_env, "").strip()
+    {{2}}, ... body placeholders in order."""
+    phone_number_id = os.environ.get("WHATSAPP_PHONE_NUMBER_ID", "").strip()
+    access_token = os.environ.get("WHATSAPP_ACCESS_TOKEN", "").strip()
+    to_raw = os.environ.get("WHATSAPP_TO", "").strip()
 
-    if not (account_sid and auth_token and to_raw and content_sid):
+    if not (phone_number_id and access_token and to_raw):
         logger.warning(
-            "notify_whatsapp: TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN/TWILIO_WHATSAPP_TO/%s "
-            "not fully set on Render - skipping notification.",
-            content_sid_env,
+            "notify_whatsapp: WHATSAPP_PHONE_NUMBER_ID/WHATSAPP_ACCESS_TOKEN/WHATSAPP_TO "
+            "not fully set on Render - skipping notification."
         )
         return False
 
-    try:
-        from twilio.rest import Client
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": to_raw,
+        "type": "template",
+        "template": {
+            "name": template_name,
+            "language": {"code": "he"},
+            "components": [
+                {
+                    "type": "body",
+                    "parameters": [{"type": "text", "text": str(v)} for v in variables],
+                }
+            ],
+        },
+    }
 
-        client = Client(account_sid, auth_token)
-        client.messages.create(
-            from_=_whatsapp_number(from_raw),
-            to=_whatsapp_number(to_raw),
-            content_sid=content_sid,
-            content_variables=json.dumps(
-                {str(i + 1): v for i, v in enumerate(variables)}, ensure_ascii=False
-            ),
+    try:
+        response = requests.post(
+            f"https://graph.facebook.com/{GRAPH_API_VERSION}/{phone_number_id}/messages",
+            headers={"Authorization": f"Bearer {access_token}"},
+            json=payload,
+            timeout=10,
         )
+        response.raise_for_status()
     except Exception:
         logger.exception("notify_whatsapp: send failed")
         return False
@@ -84,8 +90,7 @@ def notify_whatsapp(content_sid_env, variables):
     try:
         # Best-effort too - the message already sent successfully above,
         # so a Sheets hiccup here must not turn a real success into a
-        # reported failure. /admin shows this count to track Twilio's
-        # one-time free quota (see sheets.get_whatsapp_sent_count).
+        # reported failure. /admin shows this count to the client.
         import sheets
 
         sheets.increment_whatsapp_sent_count()

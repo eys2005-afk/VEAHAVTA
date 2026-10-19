@@ -50,9 +50,10 @@ gallery.py        self-service "about" photo gallery for /admin - add/remove
                   photos via GitHub's Contents API (real commits), since
                   Render's own filesystem is ephemeral (see GITHUB_TOKEN above)
 notifications.py  best-effort WhatsApp notification to the client (Noa) on a
-                  new registration and on a successful payment, via Twilio's
-                  WhatsApp Sandbox (see TWILIO_* below) - a missing/failed
-                  send never blocks registration or the payment webhook
+                  new registration and on a successful payment, via Meta's
+                  WhatsApp Cloud API directly (see WHATSAPP_* below) - a
+                  missing/failed send never blocks registration or the
+                  payment webhook
 templates/        home.html (community landing page), register.html (tier
                   buttons + phone modal), details.html (new-registrant
                   form), pay.html (embedded Nedarim Plus iframe),
@@ -105,25 +106,44 @@ See `.env.example`. In short:
   Without it, the gallery section shows an error instead of failing
   silently. `GITHUB_REPO`/`GITHUB_BRANCH` only need setting if this ever
   moves to a different repo/branch than `gallery.py`'s defaults.
-- `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_WHATSAPP_TO` - lets
-  the app WhatsApp Noa on a new registration and on a successful payment
-  (`notifications.py`). Best-effort: if any of these (or the matching
-  Content SID below) are unset, or the send fails, registration/payment
-  still complete normally - only the notification is skipped (logged, not
-  raised). `TWILIO_WHATSAPP_FROM` only needs setting if the sender number
-  ever changes.
-- `TWILIO_CONTENT_SID_REGISTRATION` / `TWILIO_CONTENT_SID_PAYMENT` - the
-  approved Content SID (`HX...`) for each WhatsApp notification template.
-  WhatsApp's Business Messaging policy requires a business-initiated
-  message like these (Noa never messages first, so there's no open 24h
-  session window) to use a pre-approved template - a plain freeform body
-  is rejected outright with `ContentSid Required` (confirmed live on
-  Render 2026-10-10). To (re)create a template: Twilio Console → Messaging
-  → Content Template Builder → new template, category **Utility**,
-  language Hebrew, and one of the bodies below (each `{{N}}` needs a
-  sample value to submit for WhatsApp/Meta approval - approval usually
-  takes anywhere from minutes to about a day). Once approved, copy its
-  Content SID into the matching Render env var above.
+- `WHATSAPP_PHONE_NUMBER_ID` / `WHATSAPP_ACCESS_TOKEN` / `WHATSAPP_TO` -
+  lets the app WhatsApp Noa on a new registration and on a successful
+  payment (`notifications.py`), via Meta's WhatsApp Cloud API directly
+  (switched from Twilio 2026-10-19 - Twilio's own Trial account wouldn't
+  allow registering a real WhatsApp Sender without upgrading to a paid
+  account; Meta's own Cloud API has a free Test WhatsApp Business Account
+  tier instead, good for 90 days free per test phone number, with up to 5
+  approved recipients - more than enough to notify just Noa). Best-effort:
+  if any of these (or the matching approved template) are unset or the
+  send fails, registration/payment still complete normally - only the
+  notification is skipped (logged, not raised).
+  - `WHATSAPP_PHONE_NUMBER_ID` - from the Meta app's WhatsApp → API Setup
+    page (not the phone number itself - a separate numeric ID).
+  - `WHATSAPP_ACCESS_TOKEN` - must be a **permanent** token: Business
+    Settings → System Users → (create or reuse one) → Assign the
+    WhatsApp Business Account as an asset with full control → Generate
+    New Token → app "משפחתי", permissions `whatsapp_business_messaging` +
+    `whatsapp_business_management`, expiration **Never**. The API Setup
+    page's own "Generate access token" button gives a 24h temporary
+    token instead - fine for a one-off live test (e.g. its "Send
+    message" button), useless for the deployed server.
+  - `WHATSAPP_TO` - Noa's number, digits only with country code (e.g.
+    `972501234567`) - must also be added as an approved recipient on the
+    API Setup page's "To" field (Meta's Test accounts only deliver to
+    explicitly-approved numbers).
+- **Message templates**: WhatsApp's Business Messaging policy requires a
+  business-initiated message like these (Noa never messages first, so
+  there's no open 24h session window) to use a pre-approved template -
+  confirmed the hard way via Twilio first (`ContentSid Required`, 2026-10-10)
+  before the Meta-direct switch. Created directly in WhatsApp Manager
+  (Meta Business Suite → WhatsApp Manager → Message Templates → Create
+  template), category **Utility**, language Hebrew, named exactly
+  `registration_notification` / `payment_notification` (notify_whatsapp()
+  passes these names directly - no env var needed, unlike Twilio's SID
+  approach). One gotcha hit live: a template whose last character is a
+  variable (`{{N}}`) is rejected ("variables cannot be at the start or
+  end of the template") - add a trailing line of real text after the
+  last variable.
 
   Registration template body (variables in order: name, phone, tier
   label):
@@ -132,6 +152,8 @@ See `.env.example`. In short:
   שם: {{1}}
   טלפון: {{2}}
   מסלול: {{3}}
+
+  נשמח לראותך!
   ```
 
   Payment template body (variables in order: name, phone, tier label,
@@ -142,7 +164,12 @@ See `.env.example`. In short:
   טלפון: {{2}}
   מסלול: {{3}}
   סכום: ₪{{4}}
+
+  תודה רבה!
   ```
+
+  Submitted for approval 2026-10-19 - not yet confirmed approved/live as
+  of this writing (see "Open items").
 
 ## Admin panel (`/admin`)
 
@@ -174,10 +201,12 @@ request, falling back to the plain static tiers if the sheet is unreachable:
   takes the usual minute-or-two to actually appear on the live site.
 - **WhatsApp notification counter** - how many `notify_whatsapp()` sends
   have actually succeeded, ever (`sheets.get_whatsapp_sent_count()`), so
-  the client can see how much of Twilio's one-time (non-renewing) free
-  WhatsApp Sandbox quota is used without checking the Twilio Console
-  directly. Flags red past 80. Only counts sends the site itself made -
-  not any manual testing done straight in the Twilio Console.
+  the client has a rough usage count without checking Meta's own
+  dashboards directly. Flags red past 80 (a leftover threshold from the
+  old Twilio Sandbox's one-time free quota - no longer tied to a real
+  limit now that this goes through Meta directly, but still a reasonable
+  "check in on this" signal). Only counts sends the site itself made -
+  not any manual testing done straight in Meta's console.
 
 ## Pricing (per the client)
 
@@ -349,3 +378,33 @@ and reflect whatever host is used, so they need no per-domain edit.
    `Param1`=phone/`Param2`=tier shape too, so if Method 3 turns out to be
    wrong, `git revert` on this change (per `CLAUDE.md`) is a safe,
    immediate rollback to the confirmed-working card-only flow.
+
+   **Update 2026-10-19: confirmed working live** - also fixed two real
+   bugs found only by testing live (not visible from the docs or unit
+   tests): StartPayment was being re-sent on every `Height` message
+   (iframe content resizes repeatedly as the visitor interacts with it,
+   not just once on load), which looked like the whole page constantly
+   jumping/flickering; and it turned out Method 3 never sends `Height` at
+   all, so gating StartPayment behind waiting for it left both sides
+   stuck forever. Both fixed; a real registration + payment on the live
+   site completed correctly end-to-end. Separately: if a *different*
+   payment attempt on this app still looks stuck/broken in your own
+   testing, check whether your browser is behind an enterprise web-
+   isolation proxy first (e.g. a corporate-managed Chrome profile
+   injecting a `fireglass_diagnostics.js`-style script into every page) -
+   that's unrelated to this app's code and won't affect real visitors;
+   Incognito (which skips that layer) is the way to confirm.
+5. **WhatsApp notifications - Meta Cloud API templates pending approval,
+   test number expires in 90 days.** 2026-10-19: switched
+   `notifications.py` from Twilio to Meta's WhatsApp Cloud API directly
+   (see "Environment variables" above for why, and the exact env vars/
+   setup steps). Both templates (`registration_notification`,
+   `payment_notification`) were submitted for WhatsApp/Meta approval the
+   same day but not yet confirmed approved as of this writing - check
+   their status in WhatsApp Manager before assuming notifications are
+   live. Also worth remembering: the Test WhatsApp Business Account's
+   phone number is only free to send from for **90 days** from when it
+   was created (not tied to this deploy date specifically - it's whatever
+   Meta started that clock at) - after that, a real/paid WhatsApp sender
+   would be needed to keep this working, same tradeoff documented when
+   this was first explored.

@@ -452,7 +452,7 @@ def details():
     try:
         tier_label = tiers.get(tier, {}).get("label", tier)
         notifications.notify_whatsapp(
-            "TWILIO_CONTENT_SID_REGISTRATION",
+            "registration_notification",
             [name, phone, tier_label],
         )
     except Exception:
@@ -610,7 +610,7 @@ def webhook_nedarim():
     if is_paid:
         try:
             notifications.notify_whatsapp(
-                "TWILIO_CONTENT_SID_PAYMENT",
+                "payment_notification",
                 [
                     merged.get("Name", ""),
                     phone,
