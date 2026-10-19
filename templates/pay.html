@@ -42,24 +42,24 @@
     // for that version if this one ever needs rolling back.
     //
     // Flow:
-    //   1. iframe loads -> we ask it for its height ({Name: 'GetHeight'}),
-    //      same handshake as the old flow (carried over - not contradicted
-    //      by anything in the Method 3 docs, but not independently
-    //      reconfirmed for this iframe version either).
-    //   2. it replies {Name: 'Height', Value: <px>} -> we resize the
-    //      iframe, hide the loading message, and send it the transaction
-    //      details ({Name: 'StartPayment', Value: {...}}) so it knows the
+    //   1. iframe loads -> we immediately send it the transaction details
+    //      ({Name: 'StartPayment', Value: {...}}) so it knows the
     //      amount/donor details and can render its own payment-method
-    //      picker + its own submit button. Unlike the old flow, there's no
-    //      button on *our* page anymore - the visitor picks a method and
+    //      picker + its own submit button. Unlike the old (v2) flow,
+    //      there's no button on *our* page anymore, and StartPayment is
+    //      NOT gated on first getting a reply from the iframe - see
+    //      startPayment() below for why. The visitor picks a method and
     //      pays entirely inside the iframe.
-    //   3. for Bit specifically, {Name: 'PendingTransaction'} arrives
+    //   1b. we also ask for its height ({Name: 'GetHeight'}) and resize on
+    //      any {Name: 'Height', Value: <px>} reply, same as the old flow -
+    //      purely cosmetic, unrelated to starting the payment.
+    //   2. for Bit specifically, {Name: 'PendingTransaction'} arrives
     //      first (donor needs to approve in the Bit app) - we show a
     //      "waiting for approval" message instead of looking stuck.
-    //   4. {Name: 'TransactionResponse', Value: {Status, PaymentMethod,
+    //   3. {Name: 'TransactionResponse', Value: {Status, PaymentMethod,
     //      ...}} is the final result, same shape as before plus
     //      PaymentMethod.
-    //   5. {Name: 'Back'} if the visitor backs out of the iframe's own
+    //   4. {Name: 'Back'} if the visitor backs out of the iframe's own
     //      payment-method screen - we just clear any "pending" message and
     //      let them try again inside the iframe.
     // Messages are sent as raw objects via postMessage (NOT JSON.stringify),
@@ -74,15 +74,32 @@
     const errorBox = document.getElementById('pay-error');
     const successBox = document.getElementById('pay-success');
     const transaction = {{ transaction | tojson }};
-    let formReady = false;
     let paymentStarted = false;
 
     function postToNedarim(data) {
       frame.contentWindow.postMessage(data, '*');
     }
 
+    // Send StartPayment as soon as the iframe has loaded - NOT gated on
+    // first receiving a 'Height' reply (the old v2 flow's handshake:
+    // GetHeight -> wait for Height -> only then act). Method 3's own docs
+    // never mention Height at all, and live testing confirmed it: the
+    // iframe loads and sits there showing its own "ממתין לפרטי התשלום..."
+    // placeholder, but never sends Height - so gating StartPayment behind
+    // it left both sides waiting on each other forever, timing out into
+    // our own "לא נטען כראוי" error on top of a perfectly fine iframe.
+    // Guarded to fire only once no matter how many times 'load'/'Height'
+    // end up triggering it.
+    function startPayment() {
+      if (paymentStarted) return;
+      paymentStarted = true;
+      loadingBox.classList.add('hidden');
+      postToNedarim({ Name: 'StartPayment', Value: transaction });
+    }
+
     frame.addEventListener('load', function () {
       postToNedarim({ Name: 'GetHeight' });
+      startPayment();
     });
 
     window.addEventListener('message', function (event) {
@@ -98,20 +115,12 @@
       if (!message || !message.Name) return;
 
       if (message.Name === 'Height') {
-        // The iframe sends 'Height' every time its own content changes
-        // size (switching payment method, showing a CVV field, etc.), not
-        // just once on initial load - so this resizes on every message,
-        // but StartPayment must only ever be sent once: resending it each
-        // time 'Height' fires restarted the payment flow inside the
-        // iframe over and over, which is what made the whole page look
-        // like it was constantly jumping/flickering.
-        formReady = true;
-        loadingBox.classList.add('hidden');
+        // Resize if/when this arrives - but NOT the signal to start
+        // payment (see startPayment() above). Harmless to call again here
+        // too: the paymentStarted guard makes it a no-op if 'load' already
+        // triggered it.
         frame.style.height = (parseInt(message.Value, 10) + 15) + 'px';
-        if (!paymentStarted) {
-          paymentStarted = true;
-          postToNedarim({ Name: 'StartPayment', Value: transaction });
-        }
+        startPayment();
       } else if (message.Name === 'PendingTransaction') {
         errorBox.classList.add('hidden');
         pendingBox.classList.remove('hidden');
@@ -128,12 +137,12 @@
       }
     });
 
-    // The iframe form itself needs to load and report its height before
-    // payment can start - if that handshake never completes (e.g. a
-    // misconfigured/missing NEDARIM_API_VALID), the user would otherwise
-    // just see a blank area with no explanation.
+    // The iframe needs to actually load before payment can start - if that
+    // never happens (e.g. a network hiccup, or the iframe failing to load
+    // at all), the user would otherwise just see a blank area with no
+    // explanation.
     setTimeout(function () {
-      if (!formReady) {
+      if (!paymentStarted) {
         loadingBox.classList.add('hidden');
         errorBox.textContent = 'טופס התשלום לא נטען כראוי. נסו לרענן את הדף, ואם הבעיה נמשכת פנו אלינו.';
         errorBox.classList.remove('hidden');
