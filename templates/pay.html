@@ -75,6 +75,7 @@
     const successBox = document.getElementById('pay-success');
     const transaction = {{ transaction | tojson }};
     let formReady = false;
+    let paymentStarted = false;
 
     function postToNedarim(data) {
       frame.contentWindow.postMessage(data, '*');
@@ -97,10 +98,20 @@
       if (!message || !message.Name) return;
 
       if (message.Name === 'Height') {
+        // The iframe sends 'Height' every time its own content changes
+        // size (switching payment method, showing a CVV field, etc.), not
+        // just once on initial load - so this resizes on every message,
+        // but StartPayment must only ever be sent once: resending it each
+        // time 'Height' fires restarted the payment flow inside the
+        // iframe over and over, which is what made the whole page look
+        // like it was constantly jumping/flickering.
         formReady = true;
         loadingBox.classList.add('hidden');
         frame.style.height = (parseInt(message.Value, 10) + 15) + 'px';
-        postToNedarim({ Name: 'StartPayment', Value: transaction });
+        if (!paymentStarted) {
+          paymentStarted = true;
+          postToNedarim({ Name: 'StartPayment', Value: transaction });
+        }
       } else if (message.Name === 'PendingTransaction') {
         errorBox.classList.add('hidden');
         pendingBox.classList.remove('hidden');
