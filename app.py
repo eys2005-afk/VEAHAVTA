@@ -9,7 +9,14 @@ from flask_cors import CORS
 
 import gallery
 import notifications
-from nedarim import TIERS, build_iframe_transaction, build_payment_url, months_label, test_charge_amount
+from nedarim import (
+    NEDARIM_IFRAME_V3_URL,
+    TIERS,
+    build_iframe_transaction,
+    build_payment_url,
+    months_label,
+    test_charge_amount,
+)
 from sheets import (
     CONTENT_FIELDS,
     WEEKDAY_LABELS,
@@ -520,6 +527,7 @@ def pay():
         amount=tier_config["amount"],
         test_charge_amount=test_charge_amount(),
         returning=returning,
+        iframe_url=NEDARIM_IFRAME_V3_URL,
         transaction=build_iframe_transaction(
             phone,
             tier,
@@ -567,6 +575,14 @@ def webhook_nedarim():
 
     phone = payload.get("Param1") or payload.get("param1")
     tier = payload.get("Param2") or payload.get("param2")
+    if not phone and tier and ":" in tier:
+        # The iframe "Method 3" flow (build_iframe_transaction) can't send
+        # Param1 at all - doing so hides the Bit payment option - so phone
+        # and tier travel packed together in Param2 instead, as
+        # "<phone>:<tier>". The Param1=phone/Param2=tier shape above is the
+        # older iframe version's, kept working here too in case of an
+        # in-flight transaction right at deploy time.
+        phone, tier = tier.split(":", 1)
     status = payload.get("Status")
     transaction_id = payload.get("TransactionId") or payload.get("Id")
 

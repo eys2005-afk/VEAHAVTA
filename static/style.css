@@ -108,12 +108,6 @@ body {
   border: 0;
 }
 
-#pay-submit {
-  display: block;
-  width: 100%;
-  margin-top: 16px;
-}
-
 /* A plain "back to the rest of the site" link for the mid-flow pages
    (payment, check-in) - so a visitor is never stuck on a dead-end screen
    with only the browser back button to escape. */

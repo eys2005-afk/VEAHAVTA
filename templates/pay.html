@@ -25,37 +25,54 @@
     <p class="error">⚠️ מצב בדיקה פעיל - החיוב בפועל יהיה ₪{{ test_charge_amount }} בלבד, לא ₪{{ amount }}</p>
     {% endif %}
     <p id="pay-loading" class="intro">טוען טופס תשלום מאובטח…</p>
+    <p id="pay-pending" class="intro hidden">ממתינים לאישור התשלום באפליקציית ביט…</p>
     <p id="pay-error" class="error hidden"></p>
     <p id="pay-success" class="intro hidden">✓ התשלום בוצע בהצלחה!</p>
-    <iframe id="nedarim-frame" class="nedarim-frame" src="https://www.matara.pro/nedarimplus/iframe?language=he"></iframe>
-    <button type="submit" id="pay-submit" class="hidden" disabled>ביצוע תשלום</button>
+    <iframe id="nedarim-frame" class="nedarim-frame" src="{{ iframe_url }}" allow="payment"></iframe>
     <a href="{{ url_for('index') }}" class="back-to-site">← חזרה לאתר</a>
   </main>
 
   <script>
-    // Implements Nedarim Plus's official iframe protocol, confirmed against
-    // their own sample page (sample2.html) - NOT the earlier guess of
-    // sending FinishTransaction2 automatically on iframe load:
-    //   1. iframe loads -> we ask it for its height ({Name: 'GetHeight'}).
-    //   2. it replies {Name: 'Height', Value: <px>} -> we resize the iframe
-    //      and reveal our own "ביצוע תשלום" button (outside the iframe,
-    //      matching their sample layout - the card fields are inside the
-    //      iframe, but the submit button is on the host page).
-    //   3. only once the visitor fills in their card and clicks that
-    //      button do we send the transaction details ({Name:
-    //      'FinishTransaction2', Value: {...}}). Sending this immediately
-    //      on load (the previous approach) meant Nedarim Plus received a
-    //      transaction request before any card details existed in the
-    //      iframe's own state, which is almost certainly why every attempt
-    //      was rejected regardless of what was in the payload.
-    //   4. it replies {Name: 'TransactionResponse', Value: {Status, ...}}.
+    // Implements Nedarim Plus's iframe "Method 3" protocol (per their own
+    // integration instructions to the client, 2026-10-19) - the version
+    // that lets the visitor pick Bit/Google Pay/Apple Pay/card *inside*
+    // the iframe, not just cards. This replaced the older
+    // FinishTransaction2/v2 flow (confirmed working for cards, but
+    // Bit/Google Pay aren't available through it at all) - see git history
+    // for that version if this one ever needs rolling back.
+    //
+    // Flow:
+    //   1. iframe loads -> we ask it for its height ({Name: 'GetHeight'}),
+    //      same handshake as the old flow (carried over - not contradicted
+    //      by anything in the Method 3 docs, but not independently
+    //      reconfirmed for this iframe version either).
+    //   2. it replies {Name: 'Height', Value: <px>} -> we resize the
+    //      iframe, hide the loading message, and send it the transaction
+    //      details ({Name: 'StartPayment', Value: {...}}) so it knows the
+    //      amount/donor details and can render its own payment-method
+    //      picker + its own submit button. Unlike the old flow, there's no
+    //      button on *our* page anymore - the visitor picks a method and
+    //      pays entirely inside the iframe.
+    //   3. for Bit specifically, {Name: 'PendingTransaction'} arrives
+    //      first (donor needs to approve in the Bit app) - we show a
+    //      "waiting for approval" message instead of looking stuck.
+    //   4. {Name: 'TransactionResponse', Value: {Status, PaymentMethod,
+    //      ...}} is the final result, same shape as before plus
+    //      PaymentMethod.
+    //   5. {Name: 'Back'} if the visitor backs out of the iframe's own
+    //      payment-method screen - we just clear any "pending" message and
+    //      let them try again inside the iframe.
     // Messages are sent as raw objects via postMessage (NOT JSON.stringify),
     // matching Nedarim Plus's own sample code.
+    //
+    // The actual charge is still only ever trusted from the server-side
+    // /webhook/nedarim callback (see app.py) - this page's own messages are
+    // just for showing the visitor what's happening live.
     const frame = document.getElementById('nedarim-frame');
     const loadingBox = document.getElementById('pay-loading');
+    const pendingBox = document.getElementById('pay-pending');
     const errorBox = document.getElementById('pay-error');
     const successBox = document.getElementById('pay-success');
-    const submitBtn = document.getElementById('pay-submit');
     const transaction = {{ transaction | tojson }};
     let formReady = false;
 
@@ -65,13 +82,6 @@
 
     frame.addEventListener('load', function () {
       postToNedarim({ Name: 'GetHeight' });
-    });
-
-    submitBtn.addEventListener('click', function () {
-      errorBox.classList.add('hidden');
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'מעבד תשלום…';
-      postToNedarim({ Name: 'FinishTransaction2', Value: transaction });
     });
 
     window.addEventListener('message', function (event) {
@@ -90,25 +100,27 @@
         formReady = true;
         loadingBox.classList.add('hidden');
         frame.style.height = (parseInt(message.Value, 10) + 15) + 'px';
-        submitBtn.classList.remove('hidden');
-        submitBtn.disabled = false;
+        postToNedarim({ Name: 'StartPayment', Value: transaction });
+      } else if (message.Name === 'PendingTransaction') {
+        errorBox.classList.add('hidden');
+        pendingBox.classList.remove('hidden');
+      } else if (message.Name === 'Back') {
+        pendingBox.classList.add('hidden');
       } else if (message.Name === 'TransactionResponse') {
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'ביצוע תשלום';
+        pendingBox.classList.add('hidden');
         if (message.Value && message.Value.Status === 'Error') {
           errorBox.textContent = message.Value.Message || 'שגיאה בתשלום, נסו שוב';
           errorBox.classList.remove('hidden');
         } else {
-          submitBtn.classList.add('hidden');
           successBox.classList.remove('hidden');
         }
       }
     });
 
     // The iframe form itself needs to load and report its height before
-    // the "ביצוע תשלום" button can appear - if that handshake never
-    // completes (e.g. a misconfigured/missing NEDARIM_API_VALID), the user
-    // would otherwise just see a blank area with no explanation.
+    // payment can start - if that handshake never completes (e.g. a
+    // misconfigured/missing NEDARIM_API_VALID), the user would otherwise
+    // just see a blank area with no explanation.
     setTimeout(function () {
       if (!formReady) {
         loadingBox.classList.add('hidden');

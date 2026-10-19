@@ -86,7 +86,8 @@ See `.env.example`. In short:
 - `NEDARIM_MOSAD_ID` - the institution ID Nedarim Plus assigns per client.
   Confirmed real value for this client: `7016996`.
 - `NEDARIM_API_VALID` - a separate auth token required by the iframe's
-  `FinishTransaction2` message, per Nedarim Plus's official docs. Obtained
+  payment message (`StartPayment`, iframe "Method 3" - see "Open items"),
+  per Nedarim Plus's official docs. Obtained
   from Nedarim Plus (called `ApiPassword` in their email) - set on Render,
   not committed here.
 - `NEDARIM_CALLBACK_URL` - the publicly reachable URL for `/webhook/nedarim`.
@@ -328,3 +329,23 @@ and reflect whatever host is used, so they need no per-domain edit.
    number that are safe to clean up manually whenever convenient.
 3. **Exact class/session names** - the client sets these weekly from
    `/admin` now; no code change needed once they start filling it in.
+4. **Nedarim iframe "Method 3" (Bit/Google Pay/Apple Pay) - needs a real
+   live test before fully trusting it.** 2026-10-19: migrated
+   `templates/pay.html`/`nedarim.py` from the confirmed-working
+   `FinishTransaction2`/v2 iframe (cards only) to `StartPayment`/v3
+   (`NEDARIM_IFRAME_V3_URL`), per Nedarim Plus's own integration
+   instructions to the client - this is the version that offers Bit/Google
+   Pay/Apple Pay as payment-method choices inside the iframe. Implemented
+   directly from their docs, but this session had no way to open the real
+   iframe or send a live transaction, so **it has not been confirmed
+   end-to-end the way the original integration was** (see the ₪1
+   `NEDARIM_TEST_AMOUNT` real-charge confirmation above). Before trusting
+   this in production: do a real ₪1 test charge for at least a card
+   payment and a Bit payment, and check Render logs for the actual
+   `TransactionResponse`/webhook payload shape (confirms `PaymentMethod`
+   and the new packed `Param2` phone:tier parsing both work against a real
+   callback, not just the unit-tested logic). The webhook
+   (`webhook_nedarim` in `app.py`) still accepts the old
+   `Param1`=phone/`Param2`=tier shape too, so if Method 3 turns out to be
+   wrong, `git revert` on this change (per `CLAUDE.md`) is a safe,
+   immediate rollback to the confirmed-working card-only flow.
