@@ -452,7 +452,7 @@ def details():
     try:
         tier_label = tiers.get(tier, {}).get("label", tier)
         notifications.notify_whatsapp(
-            "registration_notification",
+            "registration_alert_he",
             [name, phone, tier_label],
         )
     except Exception:
