@@ -532,3 +532,44 @@ button[type="submit"]:hover {
   color: white;
 }
 
+.legal-page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 24px 56px;
+  text-align: right;
+}
+
+.legal-page h1 {
+  font-size: 1.5rem;
+  color: var(--primary-dark);
+  margin-bottom: 4px;
+}
+
+.legal-updated {
+  color: #777;
+  font-size: 0.85rem;
+  margin-bottom: 28px;
+}
+
+.legal-page h2 {
+  font-size: 1.15rem;
+  color: var(--primary-dark);
+  margin: 28px 0 10px;
+}
+
+.legal-page p,
+.legal-page li {
+  color: var(--text);
+  line-height: 1.7;
+  margin-bottom: 10px;
+}
+
+.legal-page ul {
+  padding-right: 20px;
+}
+
+.legal-page a {
+  color: var(--primary);
+  font-weight: 600;
+}
+

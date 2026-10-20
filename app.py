@@ -744,6 +744,13 @@ def admin_gallery_delete():
     return redirect(url_for("admin_dashboard", gallery_status="deleted"))
 
 
+@app.route("/privacy")
+def privacy():
+    # Static legal content - no dynamic/Sheets-backed data, so no need for
+    # the usual try/except-fallback pattern used by the Sheets-driven routes.
+    return render_template("privacy.html")
+
+
 @app.route("/googleb68dc3903a36fa58.html")
 def google_site_verification():
     # Google Search Console's HTML-file verification for the
@@ -772,11 +779,16 @@ def robots_txt():
 
 @app.route("/sitemap.xml")
 def sitemap_xml():
-    # Only the two public pages belong in the sitemap: the community
-    # homepage and the registration entry point. Everything else is either
-    # private (/admin) or a mid-flow step reached only from within the app
-    # (/details, /pay, /webhook/...), which shouldn't be indexed on its own.
-    pages = [url_for("index", _external=True), url_for("register", _external=True)]
+    # Only these public pages belong in the sitemap: the community
+    # homepage, the registration entry point, and the privacy policy.
+    # Everything else is either private (/admin) or a mid-flow step reached
+    # only from within the app (/details, /pay, /webhook/...), which
+    # shouldn't be indexed on its own.
+    pages = [
+        url_for("index", _external=True),
+        url_for("register", _external=True),
+        url_for("privacy", _external=True),
+    ]
     urls = "".join(f"  <url><loc>{p}</loc></url>\n" for p in pages)
     body = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
