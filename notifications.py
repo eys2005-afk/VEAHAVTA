@@ -87,6 +87,25 @@ def notify_whatsapp(template_name, variables):
         logger.exception("notify_whatsapp: send failed")
         return False
 
+    # Success was previously silent - logged nothing at all, the same as
+    # a message that was never attempted - which made it impossible to
+    # confirm a send from Render's logs alone (only a missing-config
+    # warning or a send-failed exception were ever logged). This is the
+    # one line that actually says it worked - .warning(), not .info():
+    # nothing in this file (or app.py's own diagnostic logging) has ever
+    # used .info(), and Python's default root logger level is WARNING, so
+    # an .info() call here would silently never reach Render's logs at
+    # all without extra logging config this app doesn't have anywhere.
+    # Message ID extraction is wrapped separately so a surprise response
+    # shape can only cost us that one detail, never turn an actual
+    # successful send into a reported failure (still returns True below).
+    message_id = "?"
+    try:
+        message_id = response.json()["messages"][0]["id"]
+    except Exception:
+        pass
+    logger.warning("notify_whatsapp: sent %s to %s (message id %s)", template_name, to_raw, message_id)
+
     try:
         # Best-effort too - the message already sent successfully above,
         # so a Sheets hiccup here must not turn a real success into a
