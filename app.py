@@ -409,12 +409,14 @@ def details():
             tiers=tiers,
             name="",
             email="",
+            consent="",
         )
 
     phone = request.form.get("phone")
     tier = request.form.get("tier")
     name = request.form.get("name")
     email = request.form.get("email")
+    consent = request.form.get("consent")
 
     # A plain data-quality check (real registrant records) - NOT a Nedarim
     # Plus requirement. Their own reference implementation (sample2.html)
@@ -424,10 +426,12 @@ def details():
     # build_iframe_transaction) - just a coincidentally-matching error text.
     has_full_name = name and len(name.split()) >= 2
 
-    if not phone or not tier or not name or not email or not has_full_name:
+    if not phone or not tier or not name or not email or not has_full_name or not consent:
         error = "נא למלא את כל השדות"
         if name and not has_full_name:
             error = "נא להזין שם פרטי ושם משפחה (לא רק שם אחד)"
+        elif phone and tier and name and email and has_full_name and not consent:
+            error = "יש לאשר את תנאי השימוש ומדיניות הפרטיות כדי להמשיך"
 
         # Re-render with whatever they already typed still filled in - only
         # the missing field(s) should need re-entering, not the whole form.
@@ -438,6 +442,7 @@ def details():
             tiers=tiers,
             name=name or "",
             email=email or "",
+            consent=consent or "",
             error=error,
         )
 

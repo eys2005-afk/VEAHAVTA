@@ -35,6 +35,19 @@
       <input type="hidden" name="phone" value="{{ phone }}">
       <input type="hidden" name="tier" value="{{ tier }}">
 
+      <label class="consent-check">
+        <input type="checkbox" id="consent" name="consent" value="yes" required{% if consent %} checked{% endif %}>
+        <span>
+          ידוע לי כי לא חלה עליי חובה חוקית למסור מידע אודותיי. אם לא
+          אמסור את המידע, לא אוכל לקבל שירות. ניתנת בזאת הסכמתי לשימוש
+          במידע ולהעברתו לגורמים רלוונטיים (צדדי ג׳) לצורך מתן השירות.
+          ידוע לי על זכותי לעיין במידע ולבקש תיקונו בהתאם לדין. בעל
+          השליטה במאגר הינו מרכז ואהבת. ליצירת קשר:
+          V580375962@gmail.com. לפרטים נוספים:
+          <a href="{{ url_for('privacy') }}" target="_blank" rel="noopener">מדיניות הפרטיות</a>.
+        </span>
+      </label>
+
       <button type="submit">המשך לתשלום <span class="secure-note">(תשלום מאובטח)</span></button>
     </form>
     <a href="{{ url_for('index') }}" class="back-to-site">← חזרה לאתר</a>

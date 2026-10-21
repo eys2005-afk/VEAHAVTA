@@ -573,3 +573,29 @@ button[type="submit"]:hover {
   font-weight: 600;
 }
 
+.consent-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  text-align: right;
+  font-weight: normal;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.consent-check input[type="checkbox"] {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin-top: 3px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.consent-check a {
+  color: var(--primary);
+  font-weight: 600;
+}
+
